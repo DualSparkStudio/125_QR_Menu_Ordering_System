@@ -29,10 +29,7 @@ function MenuContent() {
   }, [code]);
 
   useEffect(() => {
-    if (restaurant && table) {
-      fetchCategories(restaurant.id);
-      setContext(table.id, restaurant.id);
-    }
+    if (restaurant && table) { fetchCategories(restaurant.id); setContext(table.id, restaurant.id); }
   }, [restaurant?.id, table?.id]);
 
   useEffect(() => {
@@ -52,10 +49,7 @@ function MenuContent() {
   };
 
   const allItems = categories.flatMap((c) => c.items.map((i: any) => ({ ...i, categoryName: c.name })));
-  const searchResults = search
-    ? allItems.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()) || i.description?.toLowerCase().includes(search.toLowerCase()))
-    : null;
-
+  const searchResults = search ? allItems.filter((i) => i.name.toLowerCase().includes(search.toLowerCase()) || i.description?.toLowerCase().includes(search.toLowerCase())) : null;
   const displayCategories = filter === 'veg'
     ? categories.map((c) => ({ ...c, items: c.items.filter((i: any) => i.isVegetarian) })).filter((c) => c.items.length)
     : filter === 'featured'
@@ -65,77 +59,62 @@ function MenuContent() {
   if (loading) return (
     <div className="min-h-screen hero-bg flex items-center justify-center">
       <div className="text-center">
-        <div className="relative w-16 h-16 mx-auto mb-4">
-          <div className="absolute inset-0 rounded-full border-4 border-orange-500/20" />
+        <div className="relative w-14 h-14 mx-auto mb-4">
+          <div className="absolute inset-0 rounded-full border-4 border-orange-200" />
           <div className="absolute inset-0 rounded-full border-4 border-orange-500 border-t-transparent animate-spin" />
         </div>
-        <p className="text-white/50">Loading menu...</p>
+        <p className="text-stone-500 text-sm">Loading menu...</p>
       </div>
     </div>
   );
 
   if (error || !restaurant) return (
     <div className="min-h-screen hero-bg flex items-center justify-center p-6">
-      <div className="text-center glass rounded-3xl p-8 max-w-sm w-full">
+      <div className="card p-8 max-w-sm w-full text-center shadow-lg">
         <div className="text-5xl mb-4">😕</div>
-        <p className="text-white/70 mb-6">{error || 'Restaurant not found'}</p>
-        <button onClick={() => router.push('/')} className="w-full bg-orange-500 text-white font-bold py-3 rounded-2xl">Go Back</button>
+        <p className="text-stone-600 mb-5">{error || 'Restaurant not found'}</p>
+        <button onClick={() => router.push('/')} className="btn-primary w-full">Go Back</button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pb-32">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/20 via-orange-500/5 to-transparent" />
-        <div className="relative px-4 pt-10 pb-6 max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-1">
+    <div className="min-h-screen bg-[#fff8f3] pb-32">
+      {/* Header */}
+      <div className="bg-white sticky top-0 z-20 border-b border-orange-100 shadow-sm shadow-orange-50">
+        <div className="max-w-2xl mx-auto px-4 pt-4 pb-3">
+          {/* Restaurant info */}
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               {restaurant.logo
-                ? <img src={restaurant.logo} alt="" className="w-12 h-12 rounded-2xl object-cover ring-2 ring-orange-500/30" />
-                : <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-2xl">🍽️</div>
+                ? <img src={restaurant.logo} alt="" className="w-11 h-11 rounded-2xl object-cover ring-2 ring-orange-100" />
+                : <div className="w-11 h-11 rounded-2xl gradient-orange flex items-center justify-center text-2xl shadow-md shadow-orange-200">🍽️</div>
               }
               <div>
-                <h1 className="text-xl font-black text-white">{restaurant.name}</h1>
-                <div className="flex items-center gap-2">
-                  <span className="text-white/40 text-xs">Table {table?.tableNumber}</span>
-                  <span className="text-white/20">·</span>
-                  <span className="text-white/40 text-xs capitalize">{table?.section}</span>
-                </div>
+                <h1 className="font-black text-stone-900 text-lg leading-tight">{restaurant.name}</h1>
+                <p className="text-stone-400 text-xs">Table {table?.tableNumber} · <span className="capitalize">{table?.section}</span></p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${restaurant.isOpen ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${restaurant.isOpen ? 'bg-green-400 pulse-dot' : 'bg-red-400'}`} />
-                {restaurant.isOpen ? 'Open' : 'Closed'}
-              </div>
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${restaurant.isOpen ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${restaurant.isOpen ? 'bg-green-500 pulse-dot' : 'bg-red-500'}`} />
+              {restaurant.isOpen ? 'Open' : 'Closed'}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Sticky nav */}
-      <div className="sticky top-0 z-20 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-2xl mx-auto px-4 py-3 space-y-3">
           {/* Search */}
-          <div className="relative">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search dishes..."
-              className="w-full bg-white/5 border border-white/8 rounded-2xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-orange-500/40 transition-all"
-            />
-            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">✕</button>}
+          <div className="relative mb-3">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search dishes..."
+              className="w-full bg-orange-50 border border-orange-100 rounded-2xl pl-10 pr-4 py-2.5 text-stone-700 text-sm placeholder-stone-300 focus:outline-none focus:border-orange-400 focus:bg-white transition-all" />
+            {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-300 hover:text-stone-500">✕</button>}
           </div>
 
           {/* Filter pills */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-3">
             {(['all', 'veg', 'featured'] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`pill-btn ${filter === f ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
-                {f === 'all' ? 'All' : f === 'veg' ? '🥦 Veg Only' : '⭐ Chef\'s Pick'}
+                className={`pill ${filter === f ? 'pill-active' : 'pill-inactive'}`}>
+                {f === 'all' ? 'All' : f === 'veg' ? '🥦 Veg' : '⭐ Featured'}
               </button>
             ))}
           </div>
@@ -145,7 +124,7 @@ function MenuContent() {
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
               {displayCategories.map((cat) => (
                 <button key={cat.id} onClick={() => scrollToCategory(cat.id)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeCategory === cat.id ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all ${activeCategory === cat.id ? 'pill-active' : 'pill-inactive'}`}>
                   {cat.icon && <span>{cat.icon}</span>}
                   <span>{cat.name}</span>
                 </button>
@@ -155,17 +134,17 @@ function MenuContent() {
         </div>
       </div>
 
-      {/* Menu content */}
+      {/* Menu items */}
       <div className="max-w-2xl mx-auto px-4 pt-4">
         {search && searchResults ? (
           searchResults.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-5xl mb-3">🔍</div>
-              <p className="text-white/40">No dishes found for "{search}"</p>
+              <p className="text-stone-400">No dishes found for "{search}"</p>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-white/30 text-sm">{searchResults.length} results</p>
+              <p className="text-stone-400 text-sm">{searchResults.length} results</p>
               {searchResults.map((item: any) => <ItemCard key={item.id} item={item} currency={restaurant.currency} onAdd={handleAdd} addedId={addedId} onTap={setSelectedItem} />)}
             </div>
           )
@@ -174,9 +153,9 @@ function MenuContent() {
             <div key={cat.id} ref={(el) => { categoryRefs.current[cat.id] = el; }} className="mb-8">
               <div className="flex items-center gap-3 mb-4 pt-2">
                 {cat.icon && <span className="text-2xl">{cat.icon}</span>}
-                <h2 className="text-lg font-bold text-white">{cat.name}</h2>
-                <div className="flex-1 h-px bg-white/5" />
-                <span className="text-white/20 text-xs">{cat.items.length} items</span>
+                <h2 className="text-lg font-black text-stone-900">{cat.name}</h2>
+                <div className="flex-1 h-px bg-orange-100" />
+                <span className="text-stone-300 text-xs font-semibold">{cat.items.length}</span>
               </div>
               <div className="space-y-3">
                 {cat.items.map((item: any) => <ItemCard key={item.id} item={item} currency={restaurant.currency} onAdd={handleAdd} addedId={addedId} onTap={setSelectedItem} />)}
@@ -190,9 +169,9 @@ function MenuContent() {
       {getItemCount() > 0 && (
         <div className="fixed bottom-6 left-4 right-4 z-30 max-w-2xl mx-auto">
           <Link href="/cart">
-            <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl px-5 py-4 flex items-center justify-between shadow-2xl shadow-orange-500/40 glow-orange active:scale-98 transition-transform">
+            <div className="btn-primary flex items-center justify-between px-5 py-4 rounded-2xl shadow-2xl shadow-orange-300">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center font-black text-white text-sm">{getItemCount()}</div>
+                <div className="w-8 h-8 bg-white/25 rounded-xl flex items-center justify-center font-black text-white text-sm">{getItemCount()}</div>
                 <span className="text-white font-bold text-base">View Cart</span>
               </div>
               <div className="flex items-center gap-2">
@@ -207,7 +186,7 @@ function MenuContent() {
       {/* Waiter bell */}
       <div className="fixed bottom-24 right-4 z-30">
         <Link href="/waiter">
-          <div className="w-14 h-14 glass rounded-2xl flex items-center justify-center text-2xl shadow-xl border border-white/10 active:scale-90 transition-transform">
+          <div className="w-14 h-14 bg-white border-2 border-orange-200 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-orange-100 hover:border-orange-400 transition-all active:scale-90">
             🔔
           </div>
         </Link>
@@ -215,7 +194,8 @@ function MenuContent() {
 
       {/* Item detail modal */}
       {selectedItem && (
-        <ItemModal item={selectedItem} currency={restaurant.currency} onClose={() => setSelectedItem(null)} onAdd={(item) => { handleAdd(item); setSelectedItem(null); }} addedId={addedId} />
+        <ItemModal item={selectedItem} currency={restaurant.currency} onClose={() => setSelectedItem(null)}
+          onAdd={(item: any) => { handleAdd(item); setSelectedItem(null); }} addedId={addedId} />
       )}
     </div>
   );
@@ -224,33 +204,28 @@ function MenuContent() {
 function ItemCard({ item, currency, onAdd, addedId, onTap }: any) {
   const isAdded = addedId === item.id;
   return (
-    <div className="item-card glass rounded-2xl overflow-hidden cursor-pointer" onClick={() => onTap(item)}>
+    <div className="item-card cursor-pointer" onClick={() => onTap(item)}>
       <div className="flex gap-0">
         <div className="flex-1 p-4">
           <div className="flex items-center gap-2 mb-1.5">
             <span className={item.isVegetarian ? 'veg-dot' : 'non-veg-dot'} />
-            {item.isFeatured && (
-              <span className="text-xs bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full font-medium border border-amber-500/20">⭐ Chef's Pick</span>
-            )}
+            {item.isFeatured && <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full font-semibold border border-amber-200">⭐ Chef's Pick</span>}
           </div>
-          <h3 className="font-bold text-white text-sm leading-tight mb-1">{item.name}</h3>
-          {item.description && <p className="text-white/35 text-xs leading-relaxed line-clamp-2 mb-2">{item.description}</p>}
+          <h3 className="font-bold text-stone-900 text-sm leading-tight mb-1">{item.name}</h3>
+          {item.description && <p className="text-stone-400 text-xs leading-relaxed line-clamp-2 mb-2">{item.description}</p>}
           <div className="flex items-center gap-2 mb-3">
             {item.spiceLevel > 0 && <span className="text-xs">{SPICE[item.spiceLevel]}</span>}
-            {item.calories && <span className="text-white/25 text-xs">{item.calories} cal</span>}
-            <span className="text-white/25 text-xs">~{item.preparationTime}m</span>
+            {item.calories && <span className="text-stone-300 text-xs">{item.calories} cal</span>}
+            <span className="text-stone-300 text-xs">~{item.preparationTime}m</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-orange-400 font-black text-base">{currency} {item.basePrice}</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); onAdd(item, e); }}
-              disabled={!item.isAvailable}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-90 ${
-                !item.isAvailable ? 'bg-white/5 text-white/20 cursor-not-allowed' :
-                isAdded ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
-              }`}
-            >
+            <span className="font-black text-orange-500 text-base">{currency} {item.basePrice}</span>
+            <button onClick={(e) => { e.stopPropagation(); onAdd(item, e); }} disabled={!item.isAvailable}
+              className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-90 ${
+                !item.isAvailable ? 'bg-stone-100 text-stone-300 cursor-not-allowed' :
+                isAdded ? 'bg-green-50 text-green-600 border border-green-200' :
+                'bg-orange-500 text-white shadow-md shadow-orange-200 hover:bg-orange-600'
+              }`}>
               {isAdded ? '✓ Added' : !item.isAvailable ? 'Sold Out' : '+ Add'}
             </button>
           </div>
@@ -258,7 +233,7 @@ function ItemCard({ item, currency, onAdd, addedId, onTap }: any) {
         {item.image && (
           <div className="w-28 flex-shrink-0 relative">
             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#111]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/40 to-transparent" />
           </div>
         )}
       </div>
@@ -269,39 +244,36 @@ function ItemCard({ item, currency, onAdd, addedId, onTap }: any) {
 function ItemModal({ item, currency, onClose, onAdd, addedId }: any) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative w-full max-w-2xl bg-[#111] rounded-t-3xl overflow-hidden slide-up" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative w-full max-w-2xl bg-white rounded-t-3xl overflow-hidden slide-up shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {item.image && <img src={item.image} alt={item.name} className="w-full h-52 object-cover" />}
         <div className="p-6">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className={item.isVegetarian ? 'veg-dot' : 'non-veg-dot'} />
-                {item.isFeatured && <span className="text-xs text-amber-400">⭐ Chef's Pick</span>}
+                {item.isFeatured && <span className="text-xs text-amber-600 font-semibold">⭐ Chef's Pick</span>}
               </div>
-              <h2 className="text-xl font-black text-white">{item.name}</h2>
+              <h2 className="text-xl font-black text-stone-900">{item.name}</h2>
             </div>
-            <button onClick={onClose} className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white/60 ml-3">✕</button>
+            <button onClick={onClose} className="w-8 h-8 bg-stone-100 rounded-full flex items-center justify-center text-stone-400 ml-3 hover:bg-stone-200">✕</button>
           </div>
-          {item.description && <p className="text-white/50 text-sm leading-relaxed mb-4">{item.description}</p>}
-          <div className="flex items-center gap-3 mb-6 flex-wrap">
-            {item.spiceLevel > 0 && <span className="glass px-3 py-1 rounded-full text-xs text-white/60">{SPICE[item.spiceLevel]} Spicy</span>}
-            {item.calories && <span className="glass px-3 py-1 rounded-full text-xs text-white/60">{item.calories} cal</span>}
-            <span className="glass px-3 py-1 rounded-full text-xs text-white/60">~{item.preparationTime} min</span>
-            {item.isVegetarian && <span className="glass px-3 py-1 rounded-full text-xs text-green-400">🥦 Vegetarian</span>}
+          {item.description && <p className="text-stone-500 text-sm leading-relaxed mb-4">{item.description}</p>}
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
+            {item.spiceLevel > 0 && <span className="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-1 rounded-full text-xs font-semibold">{SPICE[item.spiceLevel]} Spicy</span>}
+            {item.calories && <span className="bg-stone-50 border border-stone-200 text-stone-500 px-3 py-1 rounded-full text-xs font-semibold">{item.calories} cal</span>}
+            <span className="bg-stone-50 border border-stone-200 text-stone-500 px-3 py-1 rounded-full text-xs font-semibold">~{item.preparationTime} min</span>
+            {item.isVegetarian && <span className="bg-green-50 border border-green-200 text-green-600 px-3 py-1 rounded-full text-xs font-semibold">🥦 Vegetarian</span>}
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-black text-orange-400">{currency} {item.basePrice}</span>
-            <button
-              onClick={() => onAdd(item)}
-              disabled={!item.isAvailable}
+            <span className="text-2xl font-black text-orange-500">{currency} {item.basePrice}</span>
+            <button onClick={() => onAdd(item)} disabled={!item.isAvailable}
               className={`px-8 py-3 rounded-2xl font-bold text-base transition-all active:scale-95 ${
-                !item.isAvailable ? 'bg-white/5 text-white/20' :
+                !item.isAvailable ? 'bg-stone-100 text-stone-300' :
                 addedId === item.id ? 'bg-green-500 text-white' :
-                'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-xl shadow-orange-500/30'
-              }`}
-            >
-              {!item.isAvailable ? 'Sold Out' : addedId === item.id ? '✓ Added to Cart' : 'Add to Cart'}
+                'btn-primary'
+              }`}>
+              {!item.isAvailable ? 'Sold Out' : addedId === item.id ? '✓ Added!' : 'Add to Cart'}
             </button>
           </div>
         </div>
@@ -312,11 +284,7 @@ function ItemModal({ item, currency, onClose, onAdd, addedId }: any) {
 
 export default function MenuPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen hero-bg flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen hero-bg flex items-center justify-center"><div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
       <MenuContent />
     </Suspense>
   );
