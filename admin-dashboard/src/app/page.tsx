@@ -1,26 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loading, error } = useAuthStore();
+  const { login, loading, error, isAuthenticated } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // If already logged in, go straight to dashboard
+    if (isAuthenticated()) router.replace('/dashboard');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try { await login(email, password); router.push('/dashboard'); } catch {}
+    try {
+      await login(email, password);
+      router.push('/dashboard');
+    } catch {}
   };
+
+  // Avoid hydration mismatch
+  if (!mounted) return (
+    <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  // Already authenticated — show spinner while redirecting
+  if (isAuthenticated()) return (
+    <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0f1117] flex">
-      {/* Left panel */}
-      <div className="hidden lg:flex flex-col justify-between w-[480px] p-12 bg-gradient-to-br from-orange-500 to-amber-500 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      {/* Left branding panel */}
+      <div className="hidden lg:flex flex-col justify-between w-[480px] p-12 bg-gradient-to-br from-orange-500 to-amber-500 relative overflow-hidden flex-shrink-0">
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="relative">
           <div className="flex items-center gap-3 mb-16">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-2xl">🍽️</div>
@@ -47,7 +72,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel */}
+      {/* Right login panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-10">
@@ -63,8 +88,8 @@ export default function LoginPage() {
               <label className="block text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Email</label>
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                placeholder="admin@restaurant.com"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 focus:bg-white/8 transition-all text-sm"
+                placeholder="admin@thefork.com" autoComplete="email"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-orange-500/60 transition-all text-sm"
               />
             </div>
             <div>
@@ -72,10 +97,11 @@ export default function LoginPage() {
               <div className="relative">
                 <input
                   type={showPass ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
-                  placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-orange-500/50 transition-all text-sm pr-12"
+                  placeholder="••••••••" autoComplete="current-password"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-orange-500/60 transition-all text-sm pr-12"
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 text-sm">
+                <button type="button" onClick={() => setShowPass(!showPass)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 text-sm">
                   {showPass ? '🙈' : '👁️'}
                 </button>
               </div>
@@ -88,14 +114,19 @@ export default function LoginPage() {
             )}
 
             <button type="submit" disabled={loading}
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-4 rounded-xl text-base transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-              {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Signing in...</span></> : 'Sign In →'}
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-4 rounded-xl text-base transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2 mt-2 shadow-lg shadow-orange-500/20">
+              {loading
+                ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Signing in...</span></>
+                : 'Sign In →'
+              }
             </button>
           </form>
 
-          <p className="text-white/20 text-xs text-center mt-8">
-            Default: admin@thefork.com / admin123
-          </p>
+          <div className="mt-8 p-4 bg-white/5 border border-white/10 rounded-xl">
+            <p className="text-white/30 text-xs font-semibold uppercase tracking-wider mb-2">Demo Credentials</p>
+            <p className="text-white/50 text-sm">📧 admin@thefork.com</p>
+            <p className="text-white/50 text-sm">🔑 admin123</p>
+          </div>
         </div>
       </div>
     </div>
