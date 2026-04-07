@@ -23,69 +23,84 @@ export default function SettingsPage() {
   const save = async () => {
     if (!staff?.restaurantId || !token) return;
     setSaving(true);
-    try {
-      await adminApi.updateRestaurant(staff.restaurantId, form, token);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } finally { setSaving(false); }
+    try { await adminApi.updateRestaurant(staff.restaurantId, form, token); setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    finally { setSaving(false); }
   };
 
-  if (!restaurant) return <AdminLayout><div className="p-8 animate-pulse"><div className="h-8 bg-gray-200 rounded w-48 mb-4" /></div></AdminLayout>;
+  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div><label className="label">{label}</label>{children}</div>
+  );
+
+  if (!restaurant) return (
+    <AdminLayout>
+      <div className="p-6 max-w-2xl mx-auto space-y-4">
+        {[...Array(5)].map((_, i) => <div key={i} className="skeleton h-12" />)}
+      </div>
+    </AdminLayout>
+  );
 
   return (
     <AdminLayout>
-      <div className="p-8 max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Restaurant Settings</h1>
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-xl font-black text-gray-900">Settings</h1>
+          <p className="text-gray-400 text-xs mt-0.5">Restaurant profile & configuration</p>
+        </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Restaurant Name</label>
-              <input value={form.name || ''} onChange={(e) => setForm((f: any) => ({ ...f, name: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input value={form.phone || ''} onChange={(e) => setForm((f: any) => ({ ...f, phone: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input value={form.email || ''} onChange={(e) => setForm((f: any) => ({ ...f, email: e.target.value }))} type="email" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-            <input value={form.address || ''} onChange={(e) => setForm((f: any) => ({ ...f, address: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea value={form.description || ''} onChange={(e) => setForm((f: any) => ({ ...f, description: e.target.value }))} rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tax (%)</label>
-              <input value={form.taxPercentage || 0} onChange={(e) => setForm((f: any) => ({ ...f, taxPercentage: parseFloat(e.target.value) }))} type="number" min="0" max="100" step="0.5" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Service Charge (%)</label>
-              <input value={form.serviceChargePercentage || 0} onChange={(e) => setForm((f: any) => ({ ...f, serviceChargePercentage: parseFloat(e.target.value) }))} type="number" min="0" max="100" step="0.5" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+        <div className="space-y-4">
+          {/* Basic info */}
+          <div className="card p-5">
+            <h2 className="font-bold text-gray-700 text-sm mb-4 uppercase tracking-wider">Basic Info</h2>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Restaurant Name"><input value={form.name || ''} onChange={(e) => setForm((f: any) => ({ ...f, name: e.target.value }))} className="input" /></F>
+                <F label="Phone"><input value={form.phone || ''} onChange={(e) => setForm((f: any) => ({ ...f, phone: e.target.value }))} className="input" /></F>
+              </div>
+              <F label="Email"><input value={form.email || ''} onChange={(e) => setForm((f: any) => ({ ...f, email: e.target.value }))} type="email" className="input" /></F>
+              <F label="Address"><input value={form.address || ''} onChange={(e) => setForm((f: any) => ({ ...f, address: e.target.value }))} className="input" /></F>
+              <F label="Description"><textarea value={form.description || ''} onChange={(e) => setForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="input resize-none" /></F>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" checked={form.isOpen || false} onChange={(e) => setForm((f: any) => ({ ...f, isOpen: e.target.checked }))} className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-            </label>
-            <span className="text-sm font-medium text-gray-700">Restaurant is {form.isOpen ? 'Open' : 'Closed'}</span>
+          {/* Pricing */}
+          <div className="card p-5">
+            <h2 className="font-bold text-gray-700 text-sm mb-4 uppercase tracking-wider">Pricing & Taxes</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <F label="Tax (%)">
+                <input value={form.taxPercentage || 0} onChange={(e) => setForm((f: any) => ({ ...f, taxPercentage: parseFloat(e.target.value) }))} type="number" min="0" max="100" step="0.5" className="input" />
+              </F>
+              <F label="Service Charge (%)">
+                <input value={form.serviceChargePercentage || 0} onChange={(e) => setForm((f: any) => ({ ...f, serviceChargePercentage: parseFloat(e.target.value) }))} type="number" min="0" max="100" step="0.5" className="input" />
+              </F>
+            </div>
           </div>
 
-          {saved && <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm">✓ Settings saved successfully</div>}
+          {/* Status */}
+          <div className="card p-5">
+            <h2 className="font-bold text-gray-700 text-sm mb-4 uppercase tracking-wider">Restaurant Status</h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-900">Accept Orders</p>
+                <p className="text-xs text-gray-400 mt-0.5">Toggle to open or close your restaurant for new orders</p>
+              </div>
+              <button onClick={() => setForm((f: any) => ({ ...f, isOpen: !f.isOpen }))}
+                className={`relative w-14 h-7 rounded-full transition-all ${form.isOpen ? 'bg-green-500' : 'bg-gray-200'}`}>
+                <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-all ${form.isOpen ? 'left-7' : 'left-0.5'}`} />
+              </button>
+            </div>
+            <div className={`mt-3 flex items-center gap-2 text-sm font-semibold ${form.isOpen ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-2 h-2 rounded-full ${form.isOpen ? 'bg-green-500 live-dot' : 'bg-gray-300'}`} />
+              {form.isOpen ? 'Restaurant is Open' : 'Restaurant is Closed'}
+            </div>
+          </div>
 
-          <button onClick={save} disabled={saving} className="w-full bg-orange-500 text-white font-semibold py-3 rounded-xl hover:bg-orange-600 transition-all disabled:opacity-60">
+          {saved && (
+            <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm flex items-center gap-2">
+              <span>✓</span> Settings saved successfully
+            </div>
+          )}
+
+          <button onClick={save} disabled={saving} className="btn-primary w-full py-3.5 text-base">
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>

@@ -12,6 +12,11 @@ export class TablePublicController {
   findByQR(@Param('qrCode') qrCode: string) {
     return this.service.findByQrCode(qrCode);
   }
+
+  @Get('number/:tableNumber')
+  findByNumber(@Param('tableNumber') tableNumber: string) {
+    return this.service.findByTableNumber(tableNumber);
+  }
 }
 
 @Controller('restaurants/:restaurantId/tables')

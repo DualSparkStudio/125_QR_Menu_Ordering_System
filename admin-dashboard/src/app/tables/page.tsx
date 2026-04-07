@@ -5,11 +5,14 @@ import AdminLayout from '@/components/AdminLayout';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
 
-const STATUS_COLORS: Record<string, string> = {
-  available: 'bg-green-100 text-green-700',
-  occupied: 'bg-red-100 text-red-700',
-  reserved: 'bg-blue-100 text-blue-700',
-  maintenance: 'bg-gray-100 text-gray-600',
+const STATUS_STYLE: Record<string, string> = {
+  available:   'bg-green-50  text-green-700  border-green-200',
+  occupied:    'bg-red-50    text-red-700    border-red-200',
+  reserved:    'bg-blue-50   text-blue-700   border-blue-200',
+  maintenance: 'bg-gray-100  text-gray-500   border-gray-200',
+};
+const STATUS_DOT: Record<string, string> = {
+  available: 'bg-green-500', occupied: 'bg-red-500', reserved: 'bg-blue-500', maintenance: 'bg-gray-400',
 };
 
 export default function TablesPage() {
@@ -61,39 +64,65 @@ export default function TablesPage() {
   };
 
   const sections = [...new Set(tables.map((t) => t.section))];
+  const occupied = tables.filter((t) => t.status === 'occupied').length;
 
   return (
     <AdminLayout>
-      <div className="p-8">
+      <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Tables</h1>
-          <button onClick={() => setShowForm(true)} className="bg-orange-500 text-white font-medium px-4 py-2 rounded-xl hover:bg-orange-600 text-sm">+ Add Table</button>
+          <div>
+            <h1 className="text-xl font-black text-gray-900">Tables</h1>
+            <p className="text-gray-400 text-xs mt-0.5">{occupied}/{tables.length} occupied</p>
+          </div>
+          <button onClick={() => setShowForm(true)} className="btn-primary">+ Add Table</button>
         </div>
 
+        {/* Summary bar */}
+        {!loading && tables.length > 0 && (
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            {['available', 'occupied', 'reserved', 'maintenance'].map((s) => {
+              const count = tables.filter((t) => t.status === s).length;
+              return (
+                <div key={s} className="card p-4 flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${STATUS_DOT[s]}`} />
+                  <div>
+                    <p className="text-lg font-black text-gray-900">{count}</p>
+                    <p className="text-xs text-gray-400 capitalize">{s}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => <div key={i} className="bg-white rounded-2xl h-40 animate-pulse" />)}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {[...Array(8)].map((_, i) => <div key={i} className="skeleton h-44" />)}
           </div>
         ) : (
           sections.map((section) => (
             <div key={section} className="mb-8">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 capitalize">{section} Section</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest capitalize">{section}</h2>
+                <div className="flex-1 h-px bg-gray-100" />
+                <span className="text-xs text-gray-300">{tables.filter((t) => t.section === section).length} tables</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {tables.filter((t) => t.section === section).map((table) => (
-                  <div key={table.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                  <div key={table.id} className={`card p-4 border-2 ${table.status === 'occupied' ? 'border-red-200 bg-red-50/30' : 'border-transparent'}`}>
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-bold text-gray-900 text-lg">T{table.tableNumber}</p>
+                        <p className="text-2xl font-black text-gray-900">T{table.tableNumber}</p>
                         <p className="text-xs text-gray-400">{table.capacity} seats</p>
                       </div>
-                      <span className={`badge ${STATUS_COLORS[table.status]}`}>{table.status}</span>
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold border ${STATUS_STYLE[table.status]}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[table.status]}`} />
+                        {table.status}
+                      </div>
                     </div>
 
-                    <select
-                      value={table.status}
-                      onChange={(e) => updateStatus(table.id, e.target.value)}
-                      className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 mb-2 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                    >
+                    <select value={table.status} onChange={(e) => updateStatus(table.id, e.target.value)}
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 mb-3 focus:outline-none focus:ring-1 focus:ring-orange-400 bg-white">
                       <option value="available">Available</option>
                       <option value="occupied">Occupied</option>
                       <option value="reserved">Reserved</option>
@@ -101,9 +130,9 @@ export default function TablesPage() {
                     </select>
 
                     <div className="flex gap-1">
-                      <button onClick={() => setQrModal(table)} className="flex-1 text-xs bg-blue-50 text-blue-600 py-1.5 rounded-lg hover:bg-blue-100 font-medium">QR</button>
-                      <button onClick={() => regenerateQR(table.id)} className="flex-1 text-xs bg-gray-50 text-gray-600 py-1.5 rounded-lg hover:bg-gray-100 font-medium">↻ QR</button>
-                      <button onClick={() => deleteTable(table.id)} className="text-xs bg-red-50 text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-100 font-medium">✕</button>
+                      <button onClick={() => setQrModal(table)} className="flex-1 text-xs bg-blue-50 text-blue-600 py-1.5 rounded-lg hover:bg-blue-100 font-semibold">QR</button>
+                      <button onClick={() => regenerateQR(table.id)} className="flex-1 text-xs bg-gray-50 text-gray-500 py-1.5 rounded-lg hover:bg-gray-100 font-semibold">↻</button>
+                      <button onClick={() => deleteTable(table.id)} className="text-xs bg-red-50 text-red-400 px-2 py-1.5 rounded-lg hover:bg-red-100">✕</button>
                     </div>
                   </div>
                 ))}
@@ -112,40 +141,38 @@ export default function TablesPage() {
           ))
         )}
 
-        {/* Add table modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-              <h2 className="font-bold text-lg text-gray-900 mb-4">Add Table</h2>
+          <div className="modal-overlay">
+            <div className="modal max-w-sm p-6">
+              <h2 className="font-black text-gray-900 text-lg mb-5">Add New Table</h2>
               <div className="space-y-3">
-                <input value={form.tableNumber} onChange={(e) => setForm((f) => ({ ...f, tableNumber: e.target.value }))} placeholder="Table number *" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                <select value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                  <option value="main">Main</option>
-                  <option value="outdoor">Outdoor</option>
-                  <option value="bar">Bar</option>
-                  <option value="private">Private</option>
-                </select>
-                <input value={form.capacity} onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))} placeholder="Capacity" type="number" min="1" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <div><label className="label">Table Number</label><input value={form.tableNumber} onChange={(e) => setForm((f) => ({ ...f, tableNumber: e.target.value }))} placeholder="e.g. 9" className="input" /></div>
+                <div><label className="label">Section</label>
+                  <select value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))} className="input">
+                    <option value="main">Main Hall</option>
+                    <option value="outdoor">Outdoor</option>
+                    <option value="bar">Bar</option>
+                    <option value="private">Private</option>
+                  </select>
+                </div>
+                <div><label className="label">Capacity</label><input value={form.capacity} onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))} type="number" min="1" className="input" /></div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium">Cancel</button>
-                <button onClick={createTable} disabled={saving} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60">
-                  {saving ? 'Creating...' : 'Create'}
-                </button>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={createTable} disabled={saving} className="btn-primary flex-1">{saving ? 'Creating...' : 'Create Table'}</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* QR modal */}
         {qrModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
-              <h2 className="font-bold text-lg text-gray-900 mb-1">Table {qrModal.tableNumber} QR Code</h2>
-              <p className="text-sm text-gray-500 mb-4">Print and place on the table</p>
-              {qrModal.qrCodeUrl && <img src={qrModal.qrCodeUrl} alt="QR Code" className="w-48 h-48 mx-auto mb-4 rounded-xl" />}
-              <p className="text-xs text-gray-400 mb-4 break-all">{qrModal.qrCode}</p>
-              <button onClick={() => setQrModal(null)} className="w-full bg-orange-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600">Close</button>
+          <div className="modal-overlay">
+            <div className="modal max-w-sm p-6 text-center">
+              <h2 className="font-black text-gray-900 text-lg mb-1">Table {qrModal.tableNumber}</h2>
+              <p className="text-gray-400 text-sm mb-5">Print and place on the table</p>
+              {qrModal.qrCodeUrl && <img src={qrModal.qrCodeUrl} alt="QR" className="w-52 h-52 mx-auto mb-4 rounded-2xl border border-gray-100" />}
+              <p className="text-xs text-gray-300 mb-5 break-all font-mono">{qrModal.qrCode}</p>
+              <button onClick={() => setQrModal(null)} className="btn-primary w-full">Close</button>
             </div>
           </div>
         )}

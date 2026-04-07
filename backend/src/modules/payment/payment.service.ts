@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PaymentService {
@@ -13,18 +14,46 @@ export class PaymentService {
     private prisma: PrismaService,
   ) {}
 
+  private get razorpayKey() { return this.configService.get<string>('RAZORPAY_KEY_ID') || ''; }
+  private get razorpaySecret() { return this.configService.get<string>('RAZORPAY_KEY_SECRET') || ''; }
+
+  // Returns true when real Razorpay credentials are configured
+  private get isRazorpayLive(): boolean {
+    const key = this.razorpayKey;
+    return !!(key && key.startsWith('rzp_') && !key.includes('test_key'));
+  }
+
   async createRazorpayOrder(orderId: string) {
-    const order = await this.prisma.order.findUnique({ where: { id: orderId }, include: { restaurant: true } });
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { restaurant: true },
+    });
     if (!order) throw new NotFoundException('Order not found');
 
-    const razorpayKey = this.configService.get('RAZORPAY_KEY_ID');
-    const razorpaySecret = this.configService.get('RAZORPAY_KEY_SECRET');
+    let razorpayOrderId: string;
 
-    const response = await axios.post(
-      'https://api.razorpay.com/v1/orders',
-      { amount: Math.round(order.totalAmount * 100), currency: order.restaurant.currency, receipt: order.orderNumber },
-      { auth: { username: razorpayKey, password: razorpaySecret } },
-    );
+    if (this.isRazorpayLive) {
+      // ── Real Razorpay API call ──────────────────────────
+      try {
+        const response = await axios.post(
+          'https://api.razorpay.com/v1/orders',
+          {
+            amount: Math.round(order.totalAmount * 100),
+            currency: order.restaurant.currency,
+            receipt: order.orderNumber,
+          },
+          { auth: { username: this.razorpayKey, password: this.razorpaySecret } },
+        );
+        razorpayOrderId = response.data.id;
+      } catch (err: any) {
+        this.logger.error('Razorpay API error:', err?.response?.data || err.message);
+        throw new BadRequestException('Payment gateway error. Please try again.');
+      }
+    } else {
+      // ── Test / dev mode: generate a mock order ID ──────
+      razorpayOrderId = `order_test_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+      this.logger.warn(`[DEV] Using mock Razorpay order: ${razorpayOrderId}`);
+    }
 
     const payment = await this.prisma.payment.create({
       data: {
@@ -32,35 +61,49 @@ export class PaymentService {
         amount: order.totalAmount,
         currency: order.restaurant.currency,
         paymentMethod: 'razorpay',
-        razorpayOrderId: response.data.id,
+        razorpayOrderId,
         status: 'pending',
       },
     });
 
     await this.prisma.order.update({ where: { id: orderId }, data: { paymentId: payment.id } });
 
-    return { paymentId: payment.id, razorpayOrderId: response.data.id, amount: order.totalAmount, key: razorpayKey };
+    return {
+      paymentId: payment.id,
+      razorpayOrderId,
+      amount: order.totalAmount,
+      currency: order.restaurant.currency,
+      key: this.razorpayKey,
+      isTestMode: !this.isRazorpayLive,
+    };
   }
 
   async verifyRazorpayPayment(paymentId: string, razorpayPaymentId: string, razorpaySignature: string) {
     const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
     if (!payment) throw new NotFoundException('Payment not found');
 
-    const secret = this.configService.get('RAZORPAY_KEY_SECRET');
-    const body = `${payment.razorpayOrderId}|${razorpayPaymentId}`;
-    const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
-
-    if (expectedSignature !== razorpaySignature) throw new BadRequestException('Invalid payment signature');
+    if (this.isRazorpayLive) {
+      // ── Real signature verification ─────────────────────
+      const body = `${payment.razorpayOrderId}|${razorpayPaymentId}`;
+      const expected = crypto.createHmac('sha256', this.razorpaySecret).update(body).digest('hex');
+      if (expected !== razorpaySignature) throw new BadRequestException('Invalid payment signature');
+    } else {
+      // ── Dev mode: accept any signature ──────────────────
+      this.logger.warn('[DEV] Skipping Razorpay signature verification in test mode');
+    }
 
     const updated = await this.prisma.payment.update({
       where: { id: paymentId },
       data: { status: 'completed', razorpayPaymentId, completedAt: new Date() },
     });
 
-    // Update order payment status
+    // Mark order as paid + confirmed
     const orders = await this.prisma.order.findMany({ where: { paymentId } });
     for (const order of orders) {
-      await this.prisma.order.update({ where: { id: order.id }, data: { paymentStatus: 'completed', status: 'confirmed' } });
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: { paymentStatus: 'completed', status: 'confirmed' },
+      });
     }
 
     return updated;

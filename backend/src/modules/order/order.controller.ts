@@ -35,8 +35,8 @@ export class OrderController {
     return this.service.findAll(restaurantId, { status, tableId, date });
   }
 
+  // Guest: get single order by ID (no auth — order ID is unguessable)
   @Get('orders/:id')
-  @UseGuards(JwtAuthGuard)
   findById(@Param('id') id: string) {
     return this.service.findById(id);
   }

@@ -79,14 +79,22 @@ export const useRestaurantStore = create<RestaurantStore>((set) => ({
   setTable: (table) => set({ table }),
   setError: (error) => set({ error }),
 
-  fetchByQR: async (qrCode: string) => {
+  fetchByQR: async (code: string) => {
     set({ loading: true, error: null });
     try {
-      // We need restaurantId to look up by QR — use a public endpoint
-      const data: any = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/tables/qr/${qrCode}`).then(r => r.json());
+      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      // Detect if it's a UUID (QR code) or a plain table number
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
+      const url = isUUID ? `${BASE}/tables/qr/${code}` : `${BASE}/tables/number/${code}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Table not found');
+      }
+      const data: any = await res.json();
       set({ table: data, restaurant: data.restaurant, loading: false });
     } catch (e: any) {
-      set({ error: e.message, loading: false });
+      set({ error: e.message || 'Table not found', loading: false });
     }
   },
 

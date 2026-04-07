@@ -6,12 +6,12 @@ import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
 
 const ROLES = ['owner', 'manager', 'chef', 'waiter', 'cashier'];
-const ROLE_COLORS: Record<string, string> = {
-  owner: 'bg-purple-100 text-purple-700',
-  manager: 'bg-blue-100 text-blue-700',
-  chef: 'bg-orange-100 text-orange-700',
-  waiter: 'bg-teal-100 text-teal-700',
-  cashier: 'bg-green-100 text-green-700',
+const ROLE_STYLE: Record<string, string> = {
+  owner:   'bg-purple-50 text-purple-700 border-purple-200',
+  manager: 'bg-blue-50   text-blue-700   border-blue-200',
+  chef:    'bg-orange-50 text-orange-700 border-orange-200',
+  waiter:  'bg-teal-50   text-teal-700   border-teal-200',
+  cashier: 'bg-green-50  text-green-700  border-green-200',
 };
 
 export default function StaffPage() {
@@ -34,12 +34,8 @@ export default function StaffPage() {
   const createStaff = async () => {
     if (!me?.restaurantId || !token || !form.name || !form.email || !form.password) return;
     setSaving(true);
-    try {
-      await adminApi.createStaff(me.restaurantId, form, token);
-      setForm({ name: '', email: '', phone: '', role: 'waiter', password: '' });
-      setShowForm(false);
-      await load();
-    } finally { setSaving(false); }
+    try { await adminApi.createStaff(me.restaurantId, form, token); setForm({ name: '', email: '', phone: '', role: 'waiter', password: '' }); setShowForm(false); await load(); }
+    finally { setSaving(false); }
   };
 
   const toggleActive = async (id: string, isActive: boolean) => {
@@ -48,36 +44,59 @@ export default function StaffPage() {
     await load();
   };
 
+  const activeCount = staff.filter((s) => s.isActive).length;
+
   return (
     <AdminLayout>
-      <div className="p-8">
+      <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
-          <button onClick={() => setShowForm(true)} className="bg-orange-500 text-white font-medium px-4 py-2 rounded-xl hover:bg-orange-600 text-sm">+ Add Staff</button>
+          <div>
+            <h1 className="text-xl font-black text-gray-900">Staff</h1>
+            <p className="text-gray-400 text-xs mt-0.5">{activeCount} active · {staff.length} total</p>
+          </div>
+          <button onClick={() => setShowForm(true)} className="btn-primary">+ Add Staff</button>
         </div>
 
+        {/* Role breakdown */}
+        {!loading && staff.length > 0 && (
+          <div className="flex gap-2 mb-5 flex-wrap">
+            {ROLES.map((role) => {
+              const count = staff.filter((s) => s.role === role).length;
+              if (!count) return null;
+              return (
+                <div key={role} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${ROLE_STYLE[role]}`}>
+                  {role} <span className="font-black">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {loading ? (
-          <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="bg-white rounded-2xl h-20 animate-pulse" />)}</div>
+          <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="skeleton h-20" />)}</div>
+        ) : staff.length === 0 ? (
+          <div className="card py-16 text-center">
+            <div className="text-4xl mb-3">👥</div>
+            <p className="text-gray-400">No staff members yet</p>
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {staff.map((member) => (
-              <div key={member.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold flex-shrink-0">
+              <div key={member.id} className={`card p-4 flex items-center gap-4 ${!member.isActive ? 'opacity-60' : ''}`}>
+                <div className="w-11 h-11 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center text-white font-black text-lg flex-shrink-0">
                   {member.name[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">{member.name}</span>
-                    <span className={`badge ${ROLE_COLORS[member.role] || 'bg-gray-100 text-gray-600'}`}>{member.role}</span>
-                    {!member.isActive && <span className="badge bg-red-100 text-red-600">Inactive</span>}
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-bold text-gray-900">{member.name}</span>
+                    <span className={`badge border ${ROLE_STYLE[member.role] || 'bg-gray-50 text-gray-500 border-gray-200'}`}>{member.role}</span>
+                    {!member.isActive && <span className="badge bg-red-50 text-red-500 border border-red-200">Inactive</span>}
                   </div>
-                  <p className="text-sm text-gray-500">{member.email} · {member.phone}</p>
-                  {member.lastLoginAt && <p className="text-xs text-gray-400">Last login: {new Date(member.lastLoginAt).toLocaleDateString()}</p>}
+                  <p className="text-xs text-gray-400">{member.email} · {member.phone}</p>
+                  {member.lastLoginAt && <p className="text-xs text-gray-300 mt-0.5">Last login {new Date(member.lastLoginAt).toLocaleDateString()}</p>}
                 </div>
-                <button
-                  onClick={() => toggleActive(member.id, member.isActive)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${member.isActive ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                >
+                <button onClick={() => toggleActive(member.id, member.isActive)}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all flex-shrink-0 ${member.isActive ? 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-200' : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'}`}>
                   {member.isActive ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
@@ -86,23 +105,23 @@ export default function StaffPage() {
         )}
 
         {showForm && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-              <h2 className="font-bold text-lg text-gray-900 mb-4">Add Staff Member</h2>
+          <div className="modal-overlay">
+            <div className="modal max-w-md p-6">
+              <h2 className="font-black text-gray-900 text-lg mb-5">Add Staff Member</h2>
               <div className="space-y-3">
-                <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name *" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="Email *" type="email" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Phone" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                  {ROLES.map((r) => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
-                </select>
-                <input value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Password *" type="password" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <div><label className="label">Full Name *</label><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="John Doe" className="input" /></div>
+                <div><label className="label">Email *</label><input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} type="email" placeholder="john@restaurant.com" className="input" /></div>
+                <div><label className="label">Phone</label><input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+91 98765 43210" className="input" /></div>
+                <div><label className="label">Role</label>
+                  <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} className="input">
+                    {ROLES.map((r) => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                  </select>
+                </div>
+                <div><label className="label">Password *</label><input value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} type="password" placeholder="Min 8 characters" className="input" /></div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium">Cancel</button>
-                <button onClick={createStaff} disabled={saving} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60">
-                  {saving ? 'Creating...' : 'Create'}
-                </button>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={createStaff} disabled={saving} className="btn-primary flex-1">{saving ? 'Creating...' : 'Add Staff'}</button>
               </div>
             </div>
           </div>

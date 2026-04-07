@@ -26,65 +26,62 @@ export default function CouponsPage() {
     if (!staff?.restaurantId || !token || !form.code || !form.discountValue) return;
     setSaving(true);
     try {
-      await adminApi.createCoupon(staff.restaurantId, {
-        ...form,
-        discountValue: parseFloat(form.discountValue),
-        minOrderValue: form.minOrderValue ? parseFloat(form.minOrderValue) : 0,
-        maxDiscount: form.maxDiscount ? parseFloat(form.maxDiscount) : undefined,
-        usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined,
-        expiresAt: form.expiresAt || undefined,
-      }, token);
+      await adminApi.createCoupon(staff.restaurantId, { ...form, discountValue: parseFloat(form.discountValue), minOrderValue: form.minOrderValue ? parseFloat(form.minOrderValue) : 0, maxDiscount: form.maxDiscount ? parseFloat(form.maxDiscount) : undefined, usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined, expiresAt: form.expiresAt || undefined }, token);
       setForm({ code: '', description: '', discountType: 'percentage', discountValue: '', minOrderValue: '', maxDiscount: '', usageLimit: '', expiresAt: '' });
-      setShowForm(false);
-      await load();
+      setShowForm(false); await load();
     } finally { setSaving(false); }
-  };
-
-  const toggle = async (id: string) => {
-    if (!staff?.restaurantId || !token) return;
-    await adminApi.toggleCoupon(staff.restaurantId, id, token);
-    await load();
-  };
-
-  const deleteCoupon = async (id: string) => {
-    if (!staff?.restaurantId || !token || !confirm('Delete this coupon?')) return;
-    await adminApi.deleteCoupon(staff.restaurantId, id, token);
-    await load();
   };
 
   return (
     <AdminLayout>
-      <div className="p-8">
+      <div className="p-6 max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Coupons</h1>
-          <button onClick={() => setShowForm(true)} className="bg-orange-500 text-white font-medium px-4 py-2 rounded-xl hover:bg-orange-600 text-sm">+ Create Coupon</button>
+          <div>
+            <h1 className="text-xl font-black text-gray-900">Coupons</h1>
+            <p className="text-gray-400 text-xs mt-0.5">{coupons.filter((c) => c.isActive).length} active</p>
+          </div>
+          <button onClick={() => setShowForm(true)} className="btn-primary">+ Create Coupon</button>
         </div>
 
         {loading ? (
-          <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="bg-white rounded-2xl h-20 animate-pulse" />)}</div>
+          <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="skeleton h-20" />)}</div>
         ) : coupons.length === 0 ? (
-          <div className="text-center py-16 text-gray-400"><div className="text-4xl mb-2">🎟️</div><p>No coupons yet</p></div>
+          <div className="card py-16 text-center">
+            <div className="text-4xl mb-3">🎟️</div>
+            <p className="text-gray-400">No coupons yet</p>
+            <button onClick={() => setShowForm(true)} className="btn-primary mt-4 text-sm">Create first coupon</button>
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {coupons.map((coupon) => (
-              <div key={coupon.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-gray-900 font-mono">{coupon.code}</span>
-                    <span className={`badge ${coupon.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{coupon.isActive ? 'Active' : 'Inactive'}</span>
+              <div key={coupon.id} className={`card p-4 flex items-center gap-4 ${!coupon.isActive ? 'opacity-60' : ''}`}>
+                <div className="w-12 h-12 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-center text-xl flex-shrink-0">🎟️</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-black text-gray-900 font-mono tracking-wider">{coupon.code}</span>
+                    <span className={`badge border ${coupon.isActive ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                      {coupon.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `₹${coupon.discountValue} off`}
-                    {coupon.minOrderValue > 0 && ` · Min order ₹${coupon.minOrderValue}`}
-                    {coupon.usageLimit && ` · ${coupon.usedCount}/${coupon.usageLimit} used`}
-                    {coupon.expiresAt && ` · Expires ${new Date(coupon.expiresAt).toLocaleDateString()}`}
-                  </p>
+                  <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                    <span className="font-semibold text-gray-600">
+                      {coupon.discountType === 'percentage' ? `${coupon.discountValue}% off` : `₹${coupon.discountValue} off`}
+                    </span>
+                    {coupon.minOrderValue > 0 && <span>Min ₹{coupon.minOrderValue}</span>}
+                    {coupon.maxDiscount && <span>Max ₹{coupon.maxDiscount}</span>}
+                    {coupon.usageLimit && <span>{coupon.usedCount}/{coupon.usageLimit} used</span>}
+                    {coupon.expiresAt && <span>Expires {new Date(coupon.expiresAt).toLocaleDateString()}</span>}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => toggle(coupon.id)} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${coupon.isActive ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => adminApi.toggleCoupon(staff!.restaurantId, coupon.id, token!).then(load)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold border transition-all ${coupon.isActive ? 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                     {coupon.isActive ? 'Disable' : 'Enable'}
                   </button>
-                  <button onClick={() => deleteCoupon(coupon.id)} className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 font-medium">Delete</button>
+                  <button onClick={() => { if (confirm('Delete coupon?')) adminApi.deleteCoupon(staff!.restaurantId, coupon.id, token!).then(load); }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-400 border border-red-200 hover:bg-red-100 font-semibold">
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
@@ -92,33 +89,33 @@ export default function CouponsPage() {
         )}
 
         {showForm && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-              <h2 className="font-bold text-lg text-gray-900 mb-4">Create Coupon</h2>
+          <div className="modal-overlay">
+            <div className="modal max-w-md p-6">
+              <h2 className="font-black text-gray-900 text-lg mb-5">Create Coupon</h2>
               <div className="space-y-3">
-                <input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="Coupon code (e.g. SAVE20) *" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Description" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <div><label className="label">Code *</label><input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="SAVE20" className="input font-mono tracking-widest" /></div>
+                <div><label className="label">Description</label><input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="20% off on first order" className="input" /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <select value={form.discountType} onChange={(e) => setForm((f) => ({ ...f, discountType: e.target.value }))} className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
-                    <option value="percentage">Percentage %</option>
-                    <option value="fixed">Fixed ₹</option>
-                  </select>
-                  <input value={form.discountValue} onChange={(e) => setForm((f) => ({ ...f, discountValue: e.target.value }))} placeholder="Value *" type="number" min="0" className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  <div><label className="label">Type</label>
+                    <select value={form.discountType} onChange={(e) => setForm((f) => ({ ...f, discountType: e.target.value }))} className="input">
+                      <option value="percentage">Percentage %</option>
+                      <option value="fixed">Fixed ₹</option>
+                    </select>
+                  </div>
+                  <div><label className="label">Value *</label><input value={form.discountValue} onChange={(e) => setForm((f) => ({ ...f, discountValue: e.target.value }))} type="number" min="0" placeholder="20" className="input" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <input value={form.minOrderValue} onChange={(e) => setForm((f) => ({ ...f, minOrderValue: e.target.value }))} placeholder="Min order ₹" type="number" className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                  <input value={form.maxDiscount} onChange={(e) => setForm((f) => ({ ...f, maxDiscount: e.target.value }))} placeholder="Max discount ₹" type="number" className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  <div><label className="label">Min Order ₹</label><input value={form.minOrderValue} onChange={(e) => setForm((f) => ({ ...f, minOrderValue: e.target.value }))} type="number" placeholder="200" className="input" /></div>
+                  <div><label className="label">Max Discount ₹</label><input value={form.maxDiscount} onChange={(e) => setForm((f) => ({ ...f, maxDiscount: e.target.value }))} type="number" placeholder="150" className="input" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <input value={form.usageLimit} onChange={(e) => setForm((f) => ({ ...f, usageLimit: e.target.value }))} placeholder="Usage limit" type="number" className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                  <input value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))} type="date" className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                  <div><label className="label">Usage Limit</label><input value={form.usageLimit} onChange={(e) => setForm((f) => ({ ...f, usageLimit: e.target.value }))} type="number" placeholder="100" className="input" /></div>
+                  <div><label className="label">Expires</label><input value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))} type="date" className="input" /></div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <button onClick={() => setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium">Cancel</button>
-                <button onClick={createCoupon} disabled={saving} className="flex-1 bg-orange-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60">
-                  {saving ? 'Creating...' : 'Create'}
-                </button>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setShowForm(false)} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={createCoupon} disabled={saving} className="btn-primary flex-1">{saving ? 'Creating...' : 'Create'}</button>
               </div>
             </div>
           </div>

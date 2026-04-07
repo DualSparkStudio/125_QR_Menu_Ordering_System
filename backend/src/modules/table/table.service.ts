@@ -48,6 +48,16 @@ export class TableService {
     return table;
   }
 
+  async findByTableNumber(tableNumber: string) {
+    // Find the first active restaurant's table with this number
+    const table = await this.prisma.table.findFirst({
+      where: { tableNumber, deletedAt: null, isActive: true },
+      include: { restaurant: { select: { id: true, name: true, slug: true, logo: true, currency: true, taxPercentage: true, serviceChargePercentage: true, isOpen: true } } },
+    });
+    if (!table) throw new NotFoundException('Table not found');
+    return table;
+  }
+
   async update(id: string, dto: UpdateTableDto) {
     await this.findById(id);
     return this.prisma.table.update({ where: { id }, data: dto });
