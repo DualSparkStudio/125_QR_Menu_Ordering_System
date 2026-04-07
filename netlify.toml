@@ -1,0 +1,13 @@
+[build]
+  # Build the guest-app (main application)
+  base = "guest-app"
+  command = "npm install && npm run build"
+  publish = ".next"
+
+# Next.js specific settings
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
