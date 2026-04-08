@@ -6,15 +6,16 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 
 const NAV = [
-  { href: '/dashboard', icon: '▦',  label: 'Dashboard',  emoji: '📊' },
-  { href: '/orders',    icon: '≡',  label: 'Orders',     emoji: '📋' },
-  { href: '/menu',      icon: '◈',  label: 'Menu',       emoji: '🍽️' },
-  { href: '/tables',    icon: '⊞',  label: 'Tables',     emoji: '🪑' },
-  { href: '/staff',     icon: '◉',  label: 'Staff',      emoji: '👥' },
-  { href: '/coupons',   icon: '◇',  label: 'Coupons',    emoji: '🎟️' },
-  { href: '/reviews',   icon: '★',  label: 'Reviews',    emoji: '⭐' },
-  { href: '/reports',   icon: '↗',  label: 'Reports',    emoji: '📈' },
-  { href: '/settings',  icon: '⚙',  label: 'Settings',   emoji: '⚙️' },
+  { href: '/dashboard', label: 'Dashboard',  emoji: '📊' },
+  { href: '/orders',    label: 'Orders',     emoji: '📋' },
+  { href: '/menu',      label: 'Menu',       emoji: '🍽️' },
+  { href: '/tables',    label: 'Tables',     emoji: '🪑' },
+  { href: '/qrcodes',   label: 'QR Codes',   emoji: '📱' },
+  { href: '/staff',     label: 'Staff',      emoji: '👥' },
+  { href: '/coupons',   label: 'Coupons',    emoji: '🎟️' },
+  { href: '/reviews',   label: 'Reviews',    emoji: '⭐' },
+  { href: '/reports',   label: 'Reports',    emoji: '📈' },
+  { href: '/settings',  label: 'Settings',   emoji: '⚙️' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
