@@ -98,10 +98,10 @@ export class AdminService {
     });
 
     const byMethod: Record<string, number> = {};
-    payments.forEach((p) => { byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] || 0) + p.amount; });
+    payments.forEach((p: any) => { byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] || 0) + p.amount; });
 
     return {
-      totalRevenue: payments.reduce((s, p) => s + p.amount, 0),
+      totalRevenue: payments.reduce((s: number, p: any) => s + p.amount, 0),
       byPaymentMethod: byMethod,
       transactionCount: payments.length,
     };

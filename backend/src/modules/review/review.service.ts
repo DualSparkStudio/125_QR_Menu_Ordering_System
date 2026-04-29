@@ -35,8 +35,8 @@ export class ReviewService {
   async getStats(restaurantId: string) {
     const reviews = await this.prisma.review.findMany({ where: { restaurantId } });
     if (!reviews.length) return { avgFood: 0, avgService: 0, total: 0 };
-    const avgFood = reviews.reduce((s, r) => s + r.foodRating, 0) / reviews.length;
-    const avgService = reviews.reduce((s, r) => s + r.serviceRating, 0) / reviews.length;
+    const avgFood = reviews.reduce((s: number, r: any) => s + r.foodRating, 0) / reviews.length;
+    const avgService = reviews.reduce((s: number, r: any) => s + r.serviceRating, 0) / reviews.length;
     return { avgFood: +avgFood.toFixed(1), avgService: +avgService.toFixed(1), total: reviews.length };
   }
 }

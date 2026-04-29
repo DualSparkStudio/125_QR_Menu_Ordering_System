@@ -16,6 +16,7 @@ interface CartStore {
   cart: CartItem[];
   tableId: string | null;
   restaurantId: string | null;
+  hasActiveSession: boolean;
   setContext: (tableId: string, restaurantId: string) => void;
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   removeFromCart: (id: string) => void;
@@ -24,6 +25,8 @@ interface CartStore {
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
+  setActiveSession: (active: boolean) => void;
+  clearSession: () => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -32,6 +35,7 @@ export const useCartStore = create<CartStore>()(
       cart: [],
       tableId: null,
       restaurantId: null,
+      hasActiveSession: false,
 
       setContext: (tableId, restaurantId) => set({ tableId, restaurantId }),
 
@@ -61,6 +65,10 @@ export const useCartStore = create<CartStore>()(
       getTotal: () => get().cart.reduce((sum, item) => sum + item.basePrice * item.quantity, 0),
 
       getItemCount: () => get().cart.reduce((sum, item) => sum + item.quantity, 0),
+
+      setActiveSession: (active) => set({ hasActiveSession: active }),
+
+      clearSession: () => set({ hasActiveSession: false, cart: [], tableId: null, restaurantId: null }),
     }),
     { name: 'cart-storage' }
   )

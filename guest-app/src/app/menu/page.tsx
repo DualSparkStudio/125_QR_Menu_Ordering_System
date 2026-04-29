@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
+import { api } from '@/lib/api';
 import Link from 'next/link';
 
 const SPICE = ['', '🌶', '🌶🌶', '🌶🌶🌶'];
@@ -14,13 +15,16 @@ function MenuContent() {
   const code = searchParams.get('table');
 
   const { restaurant, table, categories, fetchByQR, fetchCategories, loading, error } = useRestaurantStore();
-  const { addToCart, getItemCount, getTotal, setContext } = useCartStore();
+  const { addToCart, getItemCount, getTotal, setContext, clearCart, hasActiveSession, clearSession } = useCartStore();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'veg' | 'featured'>('all');
   const [addedId, setAddedId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [showOrders, setShowOrders] = useState(false);
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -36,11 +40,92 @@ function MenuContent() {
     if (categories.length && !activeCategory) setActiveCategory(categories[0].id);
   }, [categories]);
 
+  // Load active orders count on mount
+  useEffect(() => {
+    if (table?.id) {
+      loadActiveOrders();
+    }
+  }, [table?.id]);
+
+  // Listen for payment completion events - ONLY if user has active session
+  useEffect(() => {
+    if (!table?.id || !hasActiveSession) return;
+
+    let hasRedirected = false;
+
+    const checkPaymentStatus = async () => {
+      if (hasRedirected) return;
+      
+      try {
+        const orders: any = await api.getActiveOrders(table.id);
+        console.log('Checking payment status for active session, active orders:', orders.length);
+        
+        // If no active orders, it means all orders are completed and paid
+        if (orders.length === 0) {
+          console.log('No active orders found, session complete. Clearing and redirecting...');
+          hasRedirected = true;
+          
+          // Clear session and cart
+          clearSession();
+          
+          // Show notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Payment Completed!', {
+              body: 'Thank you! Your table is now cleared.',
+              icon: '/icon.png',
+            });
+          }
+          
+          // Vibrate
+          if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200, 100, 200]);
+          }
+          
+          // Redirect to home immediately
+          router.push('/');
+        }
+      } catch (err) {
+        console.error('Failed to check payment status:', err);
+      }
+    };
+
+    // Check immediately on mount
+    checkPaymentStatus();
+
+    // Check every 3 seconds
+    const interval = setInterval(checkPaymentStatus, 3000);
+    return () => clearInterval(interval);
+  }, [table?.id, hasActiveSession]);
+
   const handleAdd = (item: any, e?: React.MouseEvent) => {
     e?.stopPropagation();
     addToCart({ id: item.id, name: item.name, basePrice: item.basePrice, image: item.image, isVegetarian: item.isVegetarian });
     setAddedId(item.id);
     setTimeout(() => setAddedId(null), 1200);
+  };
+
+  const loadActiveOrders = async () => {
+    if (!table?.id) {
+      console.log('No table ID available');
+      return;
+    }
+    console.log('Loading active orders for table:', table.id);
+    setLoadingOrders(true);
+    try {
+      const orders: any = await api.getActiveOrders(table.id);
+      console.log('Active orders received:', orders);
+      setActiveOrders(orders);
+    } catch (err) {
+      console.error('Failed to load orders:', err);
+      setActiveOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const openOrders = async () => {
+    setShowOrders(true);
+    await loadActiveOrders();
   };
 
   const scrollToCategory = (catId: string) => {
@@ -95,9 +180,11 @@ function MenuContent() {
                 <p className="text-stone-400 text-xs">Table {table?.tableNumber} · <span className="capitalize">{table?.section}</span></p>
               </div>
             </div>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${restaurant.isOpen ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${restaurant.isOpen ? 'bg-green-500 pulse-dot' : 'bg-red-500'}`} />
-              {restaurant.isOpen ? 'Open' : 'Closed'}
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${restaurant.isOpen ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${restaurant.isOpen ? 'bg-green-500 pulse-dot' : 'bg-red-500'}`} />
+                {restaurant.isOpen ? 'Open' : 'Closed'}
+              </div>
             </div>
           </div>
 
@@ -121,14 +208,16 @@ function MenuContent() {
 
           {/* Category tabs */}
           {!search && (
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
-              {displayCategories.map((cat) => (
-                <button key={cat.id} onClick={() => scrollToCategory(cat.id)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all ${activeCategory === cat.id ? 'pill-active' : 'pill-inactive'}`}>
-                  {cat.icon && <span>{cat.icon}</span>}
-                  <span>{cat.name}</span>
-                </button>
-              ))}
+            <div className="-mx-4 overflow-x-scroll no-scrollbar" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="flex gap-2 px-4 pb-3 w-max">
+                {displayCategories.map((cat) => (
+                  <button key={cat.id} onClick={() => scrollToCategory(cat.id)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeCategory === cat.id ? 'pill-active' : 'pill-inactive'}`}>
+                    {cat.icon && <span>{cat.icon}</span>}
+                    <span>{cat.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -183,19 +272,131 @@ function MenuContent() {
         </div>
       )}
 
-      {/* Waiter bell */}
-      <div className="fixed bottom-24 right-4 z-30">
-        <Link href="/waiter">
-          <div className="w-14 h-14 bg-white border-2 border-orange-200 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-orange-100 hover:border-orange-400 transition-all active:scale-90">
-            🔔
-          </div>
-        </Link>
+      {/* Floating buttons */}
+      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-2">
+        <button onClick={openOrders} className="w-14 h-14 bg-white border-2 border-blue-200 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-blue-100 hover:border-blue-400 transition-all active:scale-90 relative">
+          📋
+          {activeOrders && activeOrders.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+              {activeOrders.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Item detail modal */}
       {selectedItem && (
         <ItemModal item={selectedItem} currency={restaurant.currency} onClose={() => setSelectedItem(null)}
           onAdd={(item: any) => { handleAdd(item); setSelectedItem(null); }} addedId={addedId} />
+      )}
+
+      {/* My Orders modal */}
+      {showOrders && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowOrders(false)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+          <div className="relative w-full max-w-2xl bg-white rounded-t-3xl overflow-hidden slide-up shadow-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-6 border-b border-orange-100 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h2 className="text-xl font-black text-stone-900">My Orders</h2>
+                <p className="text-stone-400 text-xs mt-0.5">Table {table?.tableNumber} · Active orders</p>
+              </div>
+              <button onClick={() => setShowOrders(false)} className="w-8 h-8 bg-stone-100 rounded-full flex items-center justify-center text-stone-400 hover:bg-stone-200">✕</button>
+            </div>
+
+            {/* Orders list */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingOrders ? (
+                <div className="text-center py-10">
+                  <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-stone-400 text-sm">Loading orders...</p>
+                </div>
+              ) : activeOrders.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="text-5xl mb-3">📋</div>
+                  <p className="text-stone-400 font-medium mb-2">No active orders</p>
+                  <p className="text-stone-400 text-sm">Place your first order from the menu</p>
+                  <p className="text-stone-300 text-xs mt-4">Table ID: {table?.id || 'Not set'}</p>
+                  <p className="text-stone-300 text-xs">Active statuses: pending, confirmed, preparing, ready, served</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activeOrders.map((order: any) => (
+                    <div key={order.id} className="card p-5 border-2 border-orange-100 hover:border-orange-200 transition-all">
+                      {/* Order header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-black text-stone-900 text-sm">#{order.orderNumber?.slice(-10)}</span>
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                              order.status === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                              order.status === 'confirmed' ? 'bg-blue-50 text-blue-600 border border-blue-200' :
+                              order.status === 'preparing' ? 'bg-purple-50 text-purple-600 border border-purple-200' :
+                              order.status === 'ready' ? 'bg-green-50 text-green-600 border border-green-200' :
+                              'bg-gray-50 text-gray-600 border border-gray-200'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
+                          <p className="text-stone-400 text-xs">{new Date(order.createdAt).toLocaleString()}</p>
+                        </div>
+                        <Link href={`/orders/${order.id}`} onClick={() => setShowOrders(false)} className="text-xs bg-orange-500 text-white px-4 py-2 rounded-xl font-semibold hover:bg-orange-600 transition-all">
+                          View Details
+                        </Link>
+                      </div>
+
+                      {/* Order items */}
+                      <div className="space-y-2 mb-4">
+                        <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider">Order Items ({order.items?.length})</p>
+                        {order.items?.map((item: any, idx: number) => (
+                          <div key={item.id} className="flex items-center gap-3 bg-orange-50 rounded-xl p-3">
+                            {item.menuItem?.image ? (
+                              <img src={item.menuItem.image} alt={item.menuItem.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center text-xl flex-shrink-0">🍽️</div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-stone-900 font-semibold text-sm truncate">{item.menuItem?.name}</p>
+                              {item.specialInstructions && (
+                                <p className="text-stone-400 text-xs truncate">{item.specialInstructions}</p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-stone-400 text-xs">×{item.quantity}</p>
+                              <p className="text-orange-500 font-bold text-sm">{restaurant.currency} {(item.price * item.quantity).toFixed(0)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Order total */}
+                      <div className="border-t border-orange-100 pt-3 flex items-center justify-between">
+                        <span className="text-stone-500 text-sm font-medium">Total Amount</span>
+                        <span className="text-orange-500 font-black text-xl">{restaurant.currency} {order.totalAmount?.toFixed(0)}</span>
+                      </div>
+
+                      {/* Payment status */}
+                      <div className="mt-3">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                          order.paymentStatus === 'completed' 
+                            ? 'bg-green-50 text-green-700 border border-green-200' 
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {order.paymentStatus === 'completed' ? '✓ Paid' : '⏳ Unpaid'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-orange-100 bg-orange-50 flex-shrink-0">
+              <button onClick={() => setShowOrders(false)} className="btn-secondary w-full">Close</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

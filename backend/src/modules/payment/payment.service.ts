@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { OrderService } from '../order/order.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,6 +13,8 @@ export class PaymentService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    @Inject(forwardRef(() => OrderService))
+    private orderService: OrderService,
   ) {}
 
   private get razorpayKey() { return this.configService.get<string>('RAZORPAY_KEY_ID') || ''; }
@@ -104,6 +107,11 @@ export class PaymentService {
         where: { id: order.id },
         data: { paymentStatus: 'completed', status: 'confirmed' },
       });
+
+      // Check if order is completed and free table if needed
+      if (order.status === 'completed') {
+        await this.orderService.checkAndFreeTable(order.tableId);
+      }
     }
 
     return updated;
@@ -128,6 +136,9 @@ export class PaymentService {
       where: { id: orderId },
       data: { paymentId: payment.id, paymentStatus: 'completed', status: 'completed' },
     });
+
+    // Check and free table if all orders are completed
+    await this.orderService.checkAndFreeTable(order.tableId);
 
     return payment;
   }

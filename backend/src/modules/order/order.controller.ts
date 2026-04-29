@@ -1,11 +1,16 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, Sse, MessageEvent } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Observable, interval, map, switchMap, filter } from 'rxjs';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Controller()
 export class OrderController {
-  constructor(private service: OrderService) {}
+  constructor(
+    private service: OrderService,
+    private prisma: PrismaService,
+  ) {}
 
   // Guest: place order
   @Post('restaurants/:restaurantId/tables/:tableId/orders')
@@ -45,5 +50,31 @@ export class OrderController {
   @UseGuards(JwtAuthGuard)
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.service.updateStatus(id, dto);
+  }
+
+  // SSE endpoint for real-time order updates
+  @Sse('orders/:id/stream')
+  streamOrderUpdates(@Param('id') id: string): Observable<MessageEvent> {
+    return interval(3000).pipe(
+      switchMap(() => this.service.findById(id)),
+      map((order) => ({
+        data: { order, timestamp: new Date().toISOString() },
+      })),
+    );
+  }
+
+  // Clear cart for a table (called after payment completion)
+  @Post('tables/:tableId/clear-cart')
+  clearTableCart(@Param('tableId') tableId: string) {
+    // This is a signal endpoint - actual cart clearing happens on frontend
+    // But we can mark table as available if all orders are completed
+    return this.service.checkAndFreeTable(tableId);
+  }
+
+  // Mark order as paid
+  @Put('orders/:id/mark-paid')
+  @UseGuards(JwtAuthGuard)
+  markAsPaid(@Param('id') id: string) {
+    return this.service.markAsPaid(id);
   }
 }

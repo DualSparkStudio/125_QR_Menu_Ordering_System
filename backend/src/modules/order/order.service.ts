@@ -23,6 +23,20 @@ export class OrderService {
     if (!restaurant) throw new NotFoundException('Restaurant not found');
     if (!restaurant.isOpen) throw new BadRequestException('Restaurant is currently closed');
 
+    // Check for existing active order on this table
+    const existingOrder = await this.prisma.order.findFirst({
+      where: {
+        tableId,
+        status: { in: ['pending', 'confirmed', 'preparing', 'ready'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // If active order exists, add items to it instead of creating new order
+    if (existingOrder) {
+      return this.addItemsToOrder(existingOrder.id, dto);
+    }
+
     const menuItems = await this.prisma.menuItem.findMany({
       where: { id: { in: dto.items.map((i) => i.menuItemId) }, restaurantId, isAvailable: true },
     });
@@ -31,7 +45,7 @@ export class OrderService {
 
     let subtotal = 0;
     const orderItems = dto.items.map((item) => {
-      const mi = menuItems.find((m) => m.id === item.menuItemId)!;
+      const mi = menuItems.find((m: any) => m.id === item.menuItemId)!;
       subtotal += mi.basePrice * item.quantity;
       return {
         menuItemId: item.menuItemId,
@@ -97,6 +111,63 @@ export class OrderService {
     return order;
   }
 
+  async addItemsToOrder(orderId: string, dto: CreateOrderDto) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true, restaurant: true },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+    if (!['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)) {
+      throw new BadRequestException('Cannot add items to completed order');
+    }
+
+    const menuItems = await this.prisma.menuItem.findMany({
+      where: { id: { in: dto.items.map((i) => i.menuItemId) }, restaurantId: order.restaurantId, isAvailable: true },
+    });
+
+    if (menuItems.length !== dto.items.length) throw new BadRequestException('Some items are unavailable');
+
+    // Add new items to order
+    let additionalSubtotal = 0;
+    const newOrderItems = dto.items.map((item) => {
+      const mi = menuItems.find((m: any) => m.id === item.menuItemId)!;
+      additionalSubtotal += mi.basePrice * item.quantity;
+      return {
+        orderId,
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        price: mi.basePrice,
+        selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
+        specialInstructions: item.specialInstructions,
+      };
+    });
+
+    await this.prisma.orderItem.createMany({ data: newOrderItems });
+
+    // Recalculate totals
+    const newSubtotal = order.subtotal + additionalSubtotal;
+    const newTaxAmount = (newSubtotal * order.restaurant.taxPercentage) / 100;
+    const newServiceCharge = (newSubtotal * order.restaurant.serviceChargePercentage) / 100;
+    const newTotalAmount = newSubtotal + newTaxAmount + newServiceCharge - order.discountAmount;
+
+    const updatedOrder = await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        subtotal: newSubtotal,
+        taxAmount: newTaxAmount,
+        serviceCharge: newServiceCharge,
+        totalAmount: newTotalAmount,
+      },
+      include: { items: { include: { menuItem: true } }, table: true },
+    });
+
+    // Publish event
+    await this.redis.publish(`restaurant:${order.restaurantId}`, JSON.stringify({ event: 'order_updated', data: updatedOrder }));
+
+    return updatedOrder;
+  }
+
   async findAll(restaurantId: string, filters?: { status?: string; tableId?: string; date?: string }) {
     const where: any = { restaurantId };
     if (filters?.status) where.status = filters.status;
@@ -128,7 +199,43 @@ export class OrderService {
       },
     });
     if (!order) throw new NotFoundException('Order not found');
-    return order;
+    
+    // Calculate estimated time
+    const estimatedTime = await this.calculateEstimatedTime(order);
+    return { ...order, estimatedTime };
+  }
+
+  private async calculateEstimatedTime(order: any): Promise<number> {
+    // Base time: longest preparation time among items
+    const maxPrepTime = Math.max(...order.items.map((item: any) => item.menuItem?.preparationTime || 15));
+    
+    // Kitchen load: count pending orders before this one
+    const pendingOrders = await this.prisma.order.count({
+      where: {
+        restaurantId: order.restaurantId,
+        status: { in: ['pending', 'confirmed', 'preparing'] },
+        createdAt: { lt: order.createdAt },
+      },
+    });
+
+    // Add 3 minutes per pending order (kitchen queue)
+    const queueTime = pendingOrders * 3;
+    
+    // Status-based adjustment
+    const statusAdjustment: Record<string, number> = {
+      pending: 0,
+      confirmed: -5,
+      preparing: -10,
+      ready: -maxPrepTime,
+      served: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    const adjustment = statusAdjustment[order.status] || 0;
+    const totalTime = Math.max(2, maxPrepTime + queueTime + adjustment);
+    
+    return totalTime;
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
@@ -150,6 +257,11 @@ export class OrderService {
 
     const updated = await this.prisma.order.update({ where: { id }, data: updates });
 
+    // Check if order is completed and paid, then free the table
+    if (dto.status === 'completed' && updated.paymentStatus === 'completed') {
+      await this.checkAndFreeTable(order.tableId);
+    }
+
     await this.redis.publish(`restaurant:${order.restaurantId}`, JSON.stringify({ event: 'order_updated', data: updated }));
 
     return updated;
@@ -161,5 +273,50 @@ export class OrderService {
       include: { items: { include: { menuItem: true } } },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async checkAndFreeTable(tableId: string) {
+    const activeOrders = await this.prisma.order.count({
+      where: {
+        tableId,
+        status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+      },
+    });
+
+    if (activeOrders === 0) {
+      await this.prisma.table.update({
+        where: { id: tableId },
+        data: { status: 'available' },
+      });
+      return { cleared: true, message: 'Table is now available' };
+    }
+
+    return { cleared: false, message: 'Table still has active orders' };
+  }
+
+  async markAsPaid(orderId: string) {
+    const order = await this.prisma.order.findUnique({ 
+      where: { id: orderId },
+      include: { table: true }
+    });
+    if (!order) throw new NotFoundException('Order not found');
+
+    const updated = await this.prisma.order.update({
+      where: { id: orderId },
+      data: { paymentStatus: 'completed' },
+    });
+
+    // Check if table can be freed
+    if (updated.status === 'completed') {
+      await this.checkAndFreeTable(order.tableId);
+    }
+
+    // Publish event to notify guest app to clear cart and redirect
+    await this.redis.publish(`table:${order.tableId}`, JSON.stringify({ 
+      event: 'payment_completed', 
+      data: { orderId, tableId: order.tableId } 
+    }));
+
+    return updated;
   }
 }

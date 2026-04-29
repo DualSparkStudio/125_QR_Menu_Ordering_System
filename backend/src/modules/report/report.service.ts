@@ -11,14 +11,14 @@ export class ReportService {
       include: { items: { include: { menuItem: { select: { name: true, categoryId: true } } } } },
     });
 
-    const totalRevenue = orders.reduce((s, o) => s + o.totalAmount, 0);
+    const totalRevenue = orders.reduce((s: number, o: any) => s + o.totalAmount, 0);
     const totalOrders = orders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Top items
     const itemCounts: Record<string, { name: string; count: number; revenue: number }> = {};
-    orders.forEach((o) => {
-      o.items.forEach((i) => {
+    orders.forEach((o: any) => {
+      o.items.forEach((i: any) => {
         if (!itemCounts[i.menuItemId]) itemCounts[i.menuItemId] = { name: i.menuItem.name, count: 0, revenue: 0 };
         itemCounts[i.menuItemId].count += i.quantity;
         itemCounts[i.menuItemId].revenue += i.price * i.quantity;
@@ -31,7 +31,7 @@ export class ReportService {
 
     // Daily breakdown
     const dailyMap: Record<string, { orders: number; revenue: number }> = {};
-    orders.forEach((o) => {
+    orders.forEach((o: any) => {
       const day = o.createdAt.toISOString().split('T')[0];
       if (!dailyMap[day]) dailyMap[day] = { orders: 0, revenue: 0 };
       dailyMap[day].orders++;

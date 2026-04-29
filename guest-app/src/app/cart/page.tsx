@@ -12,21 +12,18 @@ declare global { interface Window { Razorpay: any; } }
 
 export default function CartPage() {
   const router = useRouter();
-  const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId } = useCartStore();
+  const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession } = useCartStore();
   const { restaurant } = useRestaurantStore();
   const { setCurrentOrder } = useOrderStore();
 
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [guestCount, setGuestCount] = useState(1);
   const [instructions, setInstructions] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'pay_now' | 'pay_later'>('pay_now');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showMergeNotice, setShowMergeNotice] = useState(false);
 
   const subtotal = getTotal();
   const tax = restaurant ? (subtotal * restaurant.taxPercentage) / 100 : 0;
@@ -45,7 +42,7 @@ export default function CartPage() {
 
   const createPayload = () => ({
     items: cart.map((i) => ({ menuItemId: i.id, quantity: i.quantity })),
-    guestName: guestName || undefined, guestPhone: guestPhone || undefined, guestCount,
+    guestCount: 1,
     specialInstructions: instructions || undefined,
     couponCode: couponApplied ? couponCode : undefined,
   });
@@ -54,40 +51,36 @@ export default function CartPage() {
     if (!tableId || !restaurantId) { setError('Session expired. Please scan QR again.'); return; }
     setLoading(true); setError('');
     try {
+      // Check for existing active orders before placing
+      const existingOrders = await api.getActiveOrders(tableId);
+      const hasActiveOrder = existingOrders.length > 0;
+      
       const order: any = await api.createOrder(restaurantId, tableId, createPayload());
-      setCurrentOrder(order); clearCart(); router.push(`/orders/${order.id}?new=1`);
-    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
-  };
-
-  const handleRazorpay = async () => {
-    if (!tableId || !restaurantId) { setError('Session expired. Please scan QR again.'); return; }
-    setLoading(true); setError('');
-    try {
-      const order: any = await api.createOrder(restaurantId, tableId, createPayload());
-      const rzpOrder: any = await api.createRazorpayOrder(order.id);
-
-      if (rzpOrder.isTestMode) {
-        await api.verifyRazorpayPayment({ paymentId: rzpOrder.paymentId, razorpayPaymentId: `pay_test_${Date.now()}`, razorpaySignature: 'test_signature' });
-        setCurrentOrder(order); clearCart(); router.push(`/orders/${order.id}?new=1&paid=1`);
-        return;
+      setCurrentOrder(order);
+      setActiveSession(true); // Mark that user has placed an order
+      clearCart();
+      
+      // Show merge notice if items were added to existing order
+      if (hasActiveOrder) {
+        setShowMergeNotice(true);
+        setTimeout(() => setShowMergeNotice(false), 5000);
+        
+        // Show browser notification
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Items Added!', {
+            body: `Your items were added to existing order #${order.orderNumber}`,
+            icon: '/icon.png',
+          });
+        }
+        
+        // Vibrate
+        if ('vibrate' in navigator) {
+          navigator.vibrate([200, 100, 200]);
+        }
       }
-
-      const options = {
-        key: rzpOrder.key, amount: Math.round(order.totalAmount * 100), currency,
-        name: restaurant?.name, description: `Order #${order.orderNumber}`,
-        order_id: rzpOrder.razorpayOrderId,
-        prefill: { name: guestName, contact: guestPhone },
-        theme: { color: '#f97316' },
-        modal: { ondismiss: () => { setLoading(false); setCurrentOrder(order); clearCart(); router.push(`/orders/${order.id}?new=1`); } },
-        handler: async (response: any) => {
-          try {
-            await api.verifyRazorpayPayment({ paymentId: rzpOrder.paymentId, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature });
-            setCurrentOrder(order); clearCart(); router.push(`/orders/${order.id}?new=1&paid=1`);
-          } catch { setCurrentOrder(order); clearCart(); router.push(`/orders/${order.id}?new=1`); }
-        },
-      };
-      new window.Razorpay(options).open();
-    } catch (e: any) { setError(e.message); setLoading(false); }
+      
+      router.push(`/orders/${order.id}?new=1`);
+    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
   };
 
   if (cart.length === 0) return (
@@ -122,6 +115,17 @@ export default function CartPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
+        {/* Merge notice */}
+        {showMergeNotice && (
+          <div className="bg-blue-50 border-2 border-blue-200 text-blue-700 rounded-2xl p-4 text-sm flex items-start gap-3 animate-bounce">
+            <span className="text-2xl">ℹ️</span>
+            <div>
+              <p className="font-bold mb-1">Items Added to Existing Order</p>
+              <p className="text-xs text-blue-600">Your new items were added to your active order instead of creating a new one.</p>
+            </div>
+          </div>
+        )}
+
         {/* Cart items */}
         <div className="card overflow-hidden shadow-sm shadow-orange-50">
           {cart.map((item, idx) => (
@@ -145,23 +149,6 @@ export default function CartPage() {
             </div>
           ))}
         </div>
-
-        {/* Guest details */}
-        <Section title="Your Details">
-          <div className="space-y-3">
-            <input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Your name (optional)" className="input-field" />
-            <input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="Phone for order updates (optional)" type="tel" className="input-field" />
-            <div className="flex items-center gap-4">
-              <span className="text-stone-400 text-sm font-medium">Guests</span>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="qty-btn bg-orange-50 text-orange-500 border border-orange-200">−</button>
-                <span className="font-black text-stone-900 w-5 text-center">{guestCount}</span>
-                <button onClick={() => setGuestCount(guestCount + 1)} className="qty-btn bg-orange-500 text-white">+</button>
-              </div>
-            </div>
-            <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Special instructions, allergies..." rows={2} className="input-field resize-none" />
-          </div>
-        </Section>
 
         {/* Coupon */}
         <Section title="Coupon Code">
@@ -193,26 +180,6 @@ export default function CartPage() {
           </div>
         </Section>
 
-        {/* Payment method */}
-        <Section title="Payment Method">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { key: 'pay_now', icon: '💳', label: 'Pay Now', sub: 'UPI, Card, Netbanking' },
-              { key: 'pay_later', icon: '🧾', label: 'Pay at Table', sub: 'Cash or card later' },
-            ].map((pm) => (
-              <button key={pm.key} onClick={() => setPaymentMethod(pm.key as any)}
-                className={`p-4 rounded-2xl border-2 text-left transition-all ${paymentMethod === pm.key ? 'border-orange-500 bg-orange-50' : 'border-stone-200 bg-white hover:border-orange-300'}`}>
-                <div className="text-2xl mb-2">{pm.icon}</div>
-                <p className="font-bold text-stone-900 text-sm">{pm.label}</p>
-                <p className="text-stone-400 text-xs mt-0.5">{pm.sub}</p>
-                {pm.key === 'pay_now' && paymentMethod === 'pay_now' && (
-                  <p className="text-orange-500 text-xs font-semibold mt-1.5">via Razorpay</p>
-                )}
-              </button>
-            ))}
-          </div>
-        </Section>
-
         {error && <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4 text-sm flex items-start gap-2"><span>⚠️</span><span>{error}</span></div>}
       </div>
 
@@ -220,13 +187,13 @@ export default function CartPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-orange-100 p-4">
         <div className="max-w-2xl mx-auto space-y-2">
           <div className="flex items-center justify-between text-sm px-1">
-            <span className="text-stone-400">{cart.reduce((s, i) => s + i.quantity, 0)} items · {paymentMethod === 'pay_now' ? '💳 Pay Now' : '🧾 Pay at Table'}</span>
+            <span className="text-stone-400">{cart.reduce((s, i) => s + i.quantity, 0)} items</span>
             <span className="text-orange-500 font-black text-lg">{currency} {total.toFixed(0)}</span>
           </div>
-          <button onClick={paymentMethod === 'pay_now' ? handleRazorpay : handlePayLater} disabled={loading}
+          <button onClick={handlePayLater} disabled={loading}
             className="btn-primary w-full flex items-center justify-center gap-3 text-lg disabled:opacity-60">
             {loading ? <><div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /><span>Processing...</span></> :
-              <span>{paymentMethod === 'pay_now' ? '💳 Pay & Order' : '🍽️ Place Order'}</span>}
+              <span>🍽️ Place Order</span>}
           </button>
         </div>
       </div>

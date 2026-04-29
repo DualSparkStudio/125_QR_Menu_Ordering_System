@@ -45,15 +45,80 @@ function OrderContent() {
   const [showReview, setShowReview] = useState(false);
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' });
   const [reviewDone, setReviewDone] = useState(false);
+  const [lastStatus, setLastStatus] = useState<string | null>(null);
 
+  // SSE connection for real-time updates
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+
+    const connectSSE = () => {
+      eventSource = new EventSource(`http://localhost:3001/orders/${id}/stream`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          const updatedOrder = data.order;
+          
+          // Detect status change and trigger vibration
+          if (lastStatus && updatedOrder.status !== lastStatus) {
+            // Vibrate on status change
+            if ('vibrate' in navigator) {
+              navigator.vibrate([200, 100, 200]); // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
+            }
+            
+            // Show browser notification if permission granted
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(`Order #${updatedOrder.orderNumber}`, {
+                body: `Status updated to: ${updatedOrder.status}`,
+                icon: '/icon.png',
+                badge: '/badge.png',
+                vibrate: [200, 100, 200],
+              });
+            }
+          }
+          
+          setOrder(updatedOrder);
+          setLastStatus(updatedOrder.status);
+          if (loading) setLoading(false);
+        } catch (err) {
+          console.error('SSE parse error:', err);
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+        // Reconnect after 5 seconds
+        setTimeout(connectSSE, 5000);
+      };
+    };
+
+    connectSSE();
+
+    // Request notification permission on mount
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    return () => {
+      eventSource?.close();
+    };
+  }, [id, lastStatus, loading]);
+
+  // Fallback: initial load
   useEffect(() => {
     const load = async () => {
-      try { const data: any = await api.getOrder(id); setOrder(data); if (isNew) setShowConfetti(true); }
-      catch { router.push('/'); } finally { setLoading(false); }
+      try {
+        const data: any = await api.getOrder(id);
+        setOrder(data);
+        setLastStatus(data.status);
+        if (isNew) setShowConfetti(true);
+      } catch {
+        router.push('/');
+      } finally {
+        setLoading(false);
+      }
     };
     load();
-    const interval = setInterval(load, 10000);
-    return () => clearInterval(interval);
   }, [id]);
 
   useEffect(() => { if (showConfetti) { const t = setTimeout(() => setShowConfetti(false), 3500); return () => clearTimeout(t); } }, [showConfetti]);
@@ -102,7 +167,7 @@ function OrderContent() {
       {/* Header */}
       <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-orange-100 px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link href="/menu" className="w-9 h-9 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-center text-orange-500">
+          <Link href={`/menu?table=${order.table?.qrCode || order.table?.tableNumber}`} className="w-9 h-9 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-center text-orange-500">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </Link>
           <div>
@@ -147,7 +212,7 @@ function OrderContent() {
               <div className="text-right">
                 <p className="text-stone-300 text-xs">Est. time</p>
                 <p className="text-orange-500 font-bold text-sm">
-                  {order.status === 'pending' ? '~20 min' : order.status === 'confirmed' ? '~15 min' : order.status === 'preparing' ? '~10 min' : order.status === 'ready' ? '~2 min' : '—'}
+                  {order.estimatedTime ? `~${order.estimatedTime} min` : '—'}
                 </p>
               </div>
             </div>
@@ -201,7 +266,9 @@ function OrderContent() {
 
         {/* Bill */}
         <div className="card p-5 shadow-sm shadow-orange-50">
-          <h3 className="font-bold text-stone-400 text-xs uppercase tracking-wider mb-4">Bill</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-stone-400 text-xs uppercase tracking-wider">Bill</h3>
+          </div>
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">₹{order.subtotal?.toFixed(0)}</span></div>
             {order.taxAmount > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Tax</span><span className="text-stone-900 font-medium">₹{order.taxAmount?.toFixed(0)}</span></div>}
@@ -261,12 +328,9 @@ function OrderContent() {
         )}
 
         {/* Actions */}
-        <div className="grid grid-cols-2 gap-3 pb-4">
-          <Link href="/menu" className="card border-2 border-orange-200 text-orange-600 font-bold py-4 rounded-2xl text-center text-sm hover:bg-orange-50 transition-all flex items-center justify-center gap-2">
+        <div className="grid grid-cols-1 gap-3 pb-4">
+          <Link href={`/menu?table=${order.table?.qrCode || order.table?.tableNumber}`} className="card border-2 border-orange-200 text-orange-600 font-bold py-4 rounded-2xl text-center text-sm hover:bg-orange-50 transition-all flex items-center justify-center gap-2">
             🍽️ Order More
-          </Link>
-          <Link href="/waiter" className="card border-2 border-stone-200 text-stone-600 font-bold py-4 rounded-2xl text-center text-sm hover:bg-stone-50 transition-all flex items-center justify-center gap-2">
-            🔔 Call Waiter
           </Link>
         </div>
       </div>

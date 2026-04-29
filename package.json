@@ -1,13 +1,14 @@
 {
-  "name": "qr-menu-ordering-system",
+  "name": "resort-ordering-system",
   "version": "1.0.0",
-  "description": "QR Menu Ordering System for Restaurants & Cafes",
+  "description": "QR Menu Ordering System - Monorepo",
   "private": true,
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail --names \"backend,guest,admin\" --prefix-colors \"cyan,green,magenta\" \"npm run dev --prefix backend\" \"npm run dev --prefix guest-app\" \"npm run dev --prefix admin-dashboard\"",
-    "install:all": "npm install --prefix backend && npm install --prefix guest-app && npm install --prefix admin-dashboard",
-    "db:migrate": "npm run prisma:migrate --prefix backend",
-    "db:seed": "npm run prisma:seed --prefix backend"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:app\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:app": "cd guest-app && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../guest-app && npm install",
+    "build:all": "cd backend && npm run build && cd ../guest-app && npm run build"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
