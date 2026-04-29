@@ -90,7 +90,7 @@ export default function OrdersPage() {
       </head>
       <body>
         <div class="header">
-          <div class="restaurant">${staff?.restaurant?.name || 'Restaurant'}</div>
+          <div class="restaurant">Restaurant</div>
           <div class="order-num">Order #${order.orderNumber}</div>
           <div class="table-info">Table ${order.table?.tableNumber} · ${order.table?.section}</div>
           <div class="date">${new Date(order.createdAt).toLocaleString()}</div>
