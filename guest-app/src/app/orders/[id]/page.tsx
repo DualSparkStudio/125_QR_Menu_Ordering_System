@@ -72,7 +72,6 @@ function OrderContent() {
                 body: `Status updated to: ${updatedOrder.status}`,
                 icon: '/icon.png',
                 badge: '/badge.png',
-                vibrate: [200, 100, 200],
               });
             }
           }

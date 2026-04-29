@@ -52,7 +52,7 @@ export default function CartPage() {
     setLoading(true); setError('');
     try {
       // Check for existing active orders before placing
-      const existingOrders = await api.getActiveOrders(tableId);
+      const existingOrders: any = await api.getActiveOrders(tableId);
       const hasActiveOrder = existingOrders.length > 0;
       
       const order: any = await api.createOrder(restaurantId, tableId, createPayload());

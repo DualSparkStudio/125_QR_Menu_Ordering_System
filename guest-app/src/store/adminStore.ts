@@ -37,7 +37,7 @@ export const useAdminStore = create<AdminStore>((set) => ({
   login: async (email: string, password: string) => {
     set({ loading: true, error: null });
     try {
-      const response = await adminApi.staffLogin(email, password);
+      const response: any = await adminApi.login(email, password);
       set({
         user: response.staff,
         token: response.accessToken,
