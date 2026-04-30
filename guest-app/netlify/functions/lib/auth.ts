@@ -36,6 +36,10 @@ export const requireAuth = (handler: Handler): Handler => {
         body: JSON.stringify({ message: 'Unauthorized' }),
       };
     }
-    return handler(event, context);
+    const result = await handler(event, context);
+    return result || {
+      statusCode: 500,
+      body: JSON.stringify({ message: 'Internal server error' }),
+    };
   };
 };
