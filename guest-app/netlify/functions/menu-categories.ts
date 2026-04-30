@@ -38,7 +38,7 @@ export const handler: Handler = async (event) => {
       if (!user) return error('Unauthorized', 401);
 
       const body = JSON.parse(event.body || '{}');
-      const { name, description, displayOrder, imageUrl } = body;
+      const { name, description, displayOrder, image } = body;
 
       if (!name) return error('Name is required', 400);
 
@@ -48,7 +48,7 @@ export const handler: Handler = async (event) => {
       if (existing) return error('Category already exists', 400);
 
       const category = await prisma.category.create({
-        data: { name, description, displayOrder, imageUrl, restaurantId },
+        data: { name, description, displayOrder, image, restaurantId },
       });
       return success(category, 201);
     }

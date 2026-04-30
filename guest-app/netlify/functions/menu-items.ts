@@ -37,10 +37,10 @@ export const handler: Handler = async (event) => {
       if (!user) return error('Unauthorized', 401);
 
       const body = JSON.parse(event.body || '{}');
-      const { categoryId, name, description, price, imageUrl, isVeg, isAvailable, isFeatured, displayOrder } = body;
+      const { categoryId, name, description, basePrice, image, isVegetarian, isAvailable, isFeatured, displayOrder } = body;
 
-      if (!categoryId || !name || price === undefined) {
-        return error('categoryId, name, and price are required', 400);
+      if (!categoryId || !name || basePrice === undefined) {
+        return error('categoryId, name, and basePrice are required', 400);
       }
 
       const category = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -53,9 +53,9 @@ export const handler: Handler = async (event) => {
           categoryId,
           name,
           description,
-          price,
-          imageUrl,
-          isVeg,
+          basePrice,
+          image,
+          isVegetarian,
           isAvailable,
           isFeatured,
           displayOrder,
