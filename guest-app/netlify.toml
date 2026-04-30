@@ -12,7 +12,11 @@
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "zisi"
+  node_bundler = "esbuild"
+  external_node_modules = ["@prisma/client"]
+  
+[[functions."*"]]
+  included_files = ["netlify/functions/lib/**", "node_modules/.prisma/**", "node_modules/@prisma/client/**"]
 
 [[redirects]]
   from = "/api/auth/staff/login"
