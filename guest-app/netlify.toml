@@ -95,12 +95,7 @@
 
 [[redirects]]
   from = "/api/restaurants/:restaurantId/tables"
-  to = "/.netlify/functions/tables-list"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/tables"
-  to = "/.netlify/functions/tables-create"
+  to = "/.netlify/functions/tables"
   status = 200
 
 [[redirects]]
