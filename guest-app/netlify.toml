@@ -119,6 +119,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/tables/number/:tableNumber"
+  to = "/.netlify/functions/tables-by-number"
+  status = 200
+
+[[redirects]]
   from = "/api/restaurants/:restaurantId/coupons/validate"
   to = "/.netlify/functions/coupons"
   status = 200
