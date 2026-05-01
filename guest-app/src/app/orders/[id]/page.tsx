@@ -47,51 +47,41 @@ function OrderContent() {
   const [reviewDone, setReviewDone] = useState(false);
   const [lastStatus, setLastStatus] = useState<string | null>(null);
 
-  // SSE connection for real-time updates
+  // Polling for real-time updates (replaces SSE)
   useEffect(() => {
-    let eventSource: EventSource | null = null;
+    let pollInterval: NodeJS.Timeout;
 
-    const connectSSE = () => {
-      eventSource = new EventSource(`http://localhost:3001/orders/${id}/stream`);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          const updatedOrder = data.order;
-          
-          // Detect status change and trigger vibration
-          if (lastStatus && updatedOrder.status !== lastStatus) {
-            // Vibrate on status change
-            if ('vibrate' in navigator) {
-              navigator.vibrate([200, 100, 200]); // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
-            }
-            
-            // Show browser notification if permission granted
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(`Order #${updatedOrder.orderNumber}`, {
-                body: `Status updated to: ${updatedOrder.status}`,
-                icon: '/icon.png',
-                badge: '/badge.png',
-              });
-            }
+    const pollOrder = async () => {
+      try {
+        const updatedOrder: any = await api.getOrder(id);
+        
+        // Detect status change and trigger vibration
+        if (lastStatus && updatedOrder.status !== lastStatus) {
+          // Vibrate on status change
+          if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200]); // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
           }
           
-          setOrder(updatedOrder);
-          setLastStatus(updatedOrder.status);
-          if (loading) setLoading(false);
-        } catch (err) {
-          console.error('SSE parse error:', err);
+          // Show browser notification if permission granted
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`Order #${updatedOrder.orderNumber}`, {
+              body: `Status updated to: ${updatedOrder.status}`,
+              icon: '/icon.png',
+              badge: '/badge.png',
+            });
+          }
         }
-      };
-
-      eventSource.onerror = () => {
-        eventSource?.close();
-        // Reconnect after 5 seconds
-        setTimeout(connectSSE, 5000);
-      };
+        
+        setOrder(updatedOrder);
+        setLastStatus(updatedOrder.status);
+        if (loading) setLoading(false);
+      } catch (err) {
+        console.error('Poll error:', err);
+      }
     };
 
-    connectSSE();
+    // Poll every 3 seconds for real-time feel
+    pollInterval = setInterval(pollOrder, 3000);
 
     // Request notification permission on mount
     if ('Notification' in window && Notification.permission === 'default') {
@@ -99,7 +89,7 @@ function OrderContent() {
     }
 
     return () => {
-      eventSource?.close();
+      clearInterval(pollInterval);
     };
   }, [id, lastStatus, loading]);
 

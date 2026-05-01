@@ -82,7 +82,7 @@ export const useRestaurantStore = create<RestaurantStore>((set) => ({
   fetchByQR: async (code: string) => {
     set({ loading: true, error: null });
     try {
-      const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const BASE = '/api';
       // Detect if it's a UUID (QR code) or a plain table number
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
       const url = isUUID ? `${BASE}/tables/qr/${code}` : `${BASE}/tables/number/${code}`;
