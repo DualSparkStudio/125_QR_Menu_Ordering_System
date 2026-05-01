@@ -27,30 +27,51 @@ export const handler: Handler = async (event) => {
     const [
       totalOrders,
       todayOrders,
-      activeOrders,
+      pendingOrders,
       totalRevenue,
       todayRevenue,
       totalTables,
       occupiedTables,
+      pendingWaiterCalls,
+      avgRatings,
     ] = await Promise.all([
       prisma.order.count({ where: { restaurantId } }),
       prisma.order.count({ where: { restaurantId, createdAt: { gte: today, lt: tomorrow } } }),
-      prisma.order.count({ where: { restaurantId, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } }),
+      prisma.order.count({ where: { restaurantId, status: { in: ['pending', 'confirmed', 'preparing'] } } }),
       prisma.order.aggregate({ where: { restaurantId, status: 'completed' }, _sum: { totalAmount: true } }),
       prisma.order.aggregate({ where: { restaurantId, status: 'completed', createdAt: { gte: today, lt: tomorrow } }, _sum: { totalAmount: true } }),
       prisma.table.count({ where: { restaurantId, deletedAt: null } }),
       prisma.table.count({ where: { restaurantId, status: 'occupied', deletedAt: null } }),
+      prisma.waiterCall.count({ where: { restaurantId, status: 'pending' } }),
+      prisma.review.aggregate({ 
+        where: { restaurantId }, 
+        _avg: { rating: true, foodRating: true, serviceRating: true } 
+      }),
     ]);
 
     return success({
-      totalOrders,
-      todayOrders,
-      activeOrders,
-      totalRevenue: totalRevenue._sum.totalAmount || 0,
-      todayRevenue: todayRevenue._sum.totalAmount || 0,
-      totalTables,
-      occupiedTables,
-      availableTables: totalTables - occupiedTables,
+      tables: {
+        total: totalTables,
+        occupied: occupiedTables,
+        available: totalTables - occupiedTables,
+      },
+      orders: {
+        total: totalOrders,
+        today: todayOrders,
+        pending: pendingOrders,
+      },
+      revenue: {
+        total: totalRevenue._sum.totalAmount || 0,
+        today: todayRevenue._sum.totalAmount || 0,
+      },
+      ratings: {
+        overall: avgRatings._avg.rating || 0,
+        food: avgRatings._avg.foodRating || 0,
+        service: avgRatings._avg.serviceRating || 0,
+      },
+      waiterCalls: {
+        pending: pendingWaiterCalls,
+      },
     });
   } catch (err: any) {
     console.error('Dashboard error:', err);
