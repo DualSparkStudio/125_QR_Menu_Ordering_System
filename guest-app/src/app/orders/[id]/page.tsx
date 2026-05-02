@@ -257,7 +257,7 @@ function OrderContent() {
         <div className="card p-5 shadow-sm shadow-orange-50">
           {/* Restaurant Details Header */}
           <div className="text-center border-b border-orange-100 pb-4 mb-4">
-            <h2 className="font-black text-stone-900 text-lg mb-1">{order.restaurant?.name || restaurant?.name}</h2>
+            <h2 className="font-black text-stone-900 text-lg mb-1">{order.restaurant?.name}</h2>
             {order.restaurant?.address && (
               <p className="text-stone-500 text-xs">{order.restaurant.address}</p>
             )}
