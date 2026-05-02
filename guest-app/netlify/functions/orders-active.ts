@@ -18,8 +18,7 @@ export const handler: Handler = async (event) => {
     const orders = await prisma.order.findMany({
       where: { 
         tableId, 
-        status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
-        deletedAt: null
+        status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] }
       },
       select: {
         id: true,
