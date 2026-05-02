@@ -49,22 +49,58 @@ export const handler: Handler = async (event) => {
     }
 
     if (existingOrder) {
-      // Add items to existing order
-      let additionalSubtotal = 0;
-      const newOrderItems = dto.items.map((item: any) => {
-        const mi = menuItems.find((m: any) => m.id === item.menuItemId)!;
-        additionalSubtotal += mi.basePrice * item.quantity;
-        return {
-          orderId: existingOrder.id,
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          price: mi.basePrice,
-          selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
-          specialInstructions: item.specialInstructions,
-        };
+      // Fetch existing order items to check for duplicates
+      const existingOrderItems = await prisma.orderItem.findMany({
+        where: { orderId: existingOrder.id },
       });
 
-      await prisma.orderItem.createMany({ data: newOrderItems });
+      // Add items to existing order - merge duplicates
+      let additionalSubtotal = 0;
+      const itemsToCreate: any[] = [];
+      const itemsToUpdate: any[] = [];
+
+      for (const item of dto.items) {
+        const mi = menuItems.find((m: any) => m.id === item.menuItemId)!;
+        const itemSubtotal = mi.basePrice * item.quantity;
+        additionalSubtotal += itemSubtotal;
+
+        // Check if this exact item already exists (same menuItemId, price, variants, instructions)
+        const existingItem = existingOrderItems.find((oi: any) => 
+          oi.menuItemId === item.menuItemId &&
+          oi.price === mi.basePrice &&
+          oi.selectedVariants === (item.selectedVariants ? JSON.stringify(item.selectedVariants) : null) &&
+          oi.specialInstructions === (item.specialInstructions || null)
+        );
+
+        if (existingItem) {
+          // Update existing item quantity
+          itemsToUpdate.push({
+            id: existingItem.id,
+            quantity: existingItem.quantity + item.quantity,
+          });
+        } else {
+          // Create new item
+          itemsToCreate.push({
+            orderId: existingOrder.id,
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            price: mi.basePrice,
+            selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
+            specialInstructions: item.specialInstructions,
+          });
+        }
+      }
+
+      // Execute updates and creates
+      await Promise.all([
+        ...itemsToUpdate.map((item) =>
+          prisma.orderItem.update({
+            where: { id: item.id },
+            data: { quantity: item.quantity },
+          })
+        ),
+        itemsToCreate.length > 0 ? prisma.orderItem.createMany({ data: itemsToCreate }) : Promise.resolve(),
+      ]);
 
       const newSubtotal = existingOrder.subtotal + additionalSubtotal;
       const newTaxAmount = (newSubtotal * restaurant.taxPercentage) / 100;
