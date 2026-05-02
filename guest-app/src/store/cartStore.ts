@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Generate a unique device session ID
-const generateDeviceSessionId = () => {
-  return `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+// Generate unique session ID for this device/browser tab
+const generateSessionId = () => {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
 export interface CartItem {
@@ -21,8 +21,8 @@ interface CartStore {
   cart: CartItem[];
   tableId: string | null;
   restaurantId: string | null;
-  deviceSessionId: string;
   hasActiveSession: boolean;
+  sessionId: string;
   setContext: (tableId: string, restaurantId: string) => void;
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
   removeFromCart: (id: string) => void;
@@ -33,7 +33,7 @@ interface CartStore {
   getItemCount: () => number;
   setActiveSession: (active: boolean) => void;
   clearSession: () => void;
-  getDeviceSessionId: () => string;
+  initSession: () => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -42,8 +42,15 @@ export const useCartStore = create<CartStore>()(
       cart: [],
       tableId: null,
       restaurantId: null,
-      deviceSessionId: generateDeviceSessionId(),
       hasActiveSession: false,
+      sessionId: generateSessionId(),
+
+      initSession: () => {
+        const currentSessionId = get().sessionId;
+        if (!currentSessionId || currentSessionId === '') {
+          set({ sessionId: generateSessionId() });
+        }
+      },
 
       setContext: (tableId, restaurantId) => set({ tableId, restaurantId }),
 
@@ -76,16 +83,7 @@ export const useCartStore = create<CartStore>()(
 
       setActiveSession: (active) => set({ hasActiveSession: active }),
 
-      clearSession: () => set({ 
-        hasActiveSession: false, 
-        cart: [], 
-        tableId: null, 
-        restaurantId: null,
-        // Generate new session ID when clearing
-        deviceSessionId: generateDeviceSessionId()
-      }),
-
-      getDeviceSessionId: () => get().deviceSessionId,
+      clearSession: () => set({ hasActiveSession: false, cart: [], tableId: null, restaurantId: null, sessionId: generateSessionId() }),
     }),
     { name: 'cart-storage' }
   )

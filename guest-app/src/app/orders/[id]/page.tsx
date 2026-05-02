@@ -80,8 +80,8 @@ function OrderContent() {
       }
     };
 
-    // Poll every 3 seconds for real-time feel
-    pollInterval = setInterval(pollOrder, 3000);
+    // Poll every 5 seconds (reduced for better performance)
+    pollInterval = setInterval(pollOrder, 5000);
 
     // Request notification permission on mount
     if ('Notification' in window && Notification.permission === 'default') {

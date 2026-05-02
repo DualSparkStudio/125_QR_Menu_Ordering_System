@@ -20,7 +20,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 
 export default function CartPage() {
   const router = useRouter();
-  const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession, getDeviceSessionId } = useCartStore();
+  const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession } = useCartStore();
   const { restaurant, table } = useRestaurantStore();
   const { setCurrentOrder } = useOrderStore();
 
@@ -66,7 +66,6 @@ export default function CartPage() {
     guestCount: 1,
     specialInstructions: instructions || undefined,
     couponCode: couponApplied ? couponCode : undefined,
-    deviceSessionId: getDeviceSessionId(), // Add device session ID
   });
 
   const handlePayLater = async () => {
@@ -74,8 +73,7 @@ export default function CartPage() {
     setLoading(true); setError('');
     try {
       // Check for existing active orders before placing
-      const deviceSessionId = getDeviceSessionId();
-      const existingOrders: any = await api.getActiveOrders(tableId, deviceSessionId);
+      const existingOrders: any = await api.getActiveOrders(tableId);
       const hasActiveOrder = existingOrders.length > 0;
       
       const order: any = await api.createOrder(restaurantId, tableId, createPayload());

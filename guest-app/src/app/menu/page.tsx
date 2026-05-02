@@ -15,7 +15,7 @@ function MenuContent() {
   const code = searchParams.get('table');
 
   const { restaurant, table, categories, fetchByQR, fetchCategories, loading, error } = useRestaurantStore();
-  const { addToCart, getItemCount, getTotal, setContext, clearCart, hasActiveSession, clearSession, getDeviceSessionId } = useCartStore();
+  const { addToCart, getItemCount, getTotal, setContext, clearCart, hasActiveSession, clearSession, sessionId, initSession } = useCartStore();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -25,7 +25,14 @@ function MenuContent() {
   const [showOrders, setShowOrders] = useState(false);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [tableOccupied, setTableOccupied] = useState(false);
+  const [occupiedByOther, setOccupiedByOther] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Initialize session on mount
+  useEffect(() => {
+    initSession();
+  }, []);
 
   useEffect(() => {
     if (!code) { router.push('/'); return; }
@@ -33,19 +40,51 @@ function MenuContent() {
   }, [code]);
 
   useEffect(() => {
-    if (restaurant && table) { fetchCategories(restaurant.id); setContext(table.id, restaurant.id); }
+    if (restaurant && table) { 
+      fetchCategories(restaurant.id); 
+      setContext(table.id, restaurant.id); 
+    }
   }, [restaurant?.id, table?.id]);
 
   useEffect(() => {
     if (categories.length && !activeCategory) setActiveCategory(categories[0].id);
   }, [categories]);
 
-  // Load active orders count on mount
+  // Check if table is occupied by another session
   useEffect(() => {
-    if (table?.id) {
-      loadActiveOrders();
-    }
-  }, [table?.id]);
+    if (!table?.id) return;
+
+    const checkTableStatus = async () => {
+      try {
+        const orders: any = await api.getActiveOrders(table.id);
+        
+        if (orders.length > 0) {
+          setTableOccupied(true);
+          // Check if any order belongs to a different session
+          const hasOtherSession = orders.some((order: any) => 
+            order.sessionId && order.sessionId !== sessionId
+          );
+          setOccupiedByOther(hasOtherSession);
+          
+          // If occupied by another session and user has no active session, show warning
+          if (hasOtherSession && !hasActiveSession) {
+            // Don't allow ordering
+            return;
+          }
+        } else {
+          setTableOccupied(false);
+          setOccupiedByOther(false);
+        }
+      } catch (err) {
+        console.error('Failed to check table status:', err);
+      }
+    };
+
+    checkTableStatus();
+    // Check every 5 seconds
+    const interval = setInterval(checkTableStatus, 5000);
+    return () => clearInterval(interval);
+  }, [table?.id, sessionId, hasActiveSession]);
 
   // Listen for payment completion events - ONLY if user has active session
   useEffect(() => {
@@ -57,13 +96,10 @@ function MenuContent() {
       if (hasRedirected) return;
       
       try {
-        const deviceSessionId = getDeviceSessionId();
-        const orders: any = await api.getActiveOrders(table.id, deviceSessionId);
-        console.log('Checking payment status for active session, active orders:', orders.length);
+        const orders: any = await api.getActiveOrders(table.id);
         
         // If no active orders, it means all orders are completed and paid
         if (orders.length === 0) {
-          console.log('No active orders found, session complete. Clearing and redirecting...');
           hasRedirected = true;
           
           // Clear session and cart
@@ -93,10 +129,10 @@ function MenuContent() {
     // Check immediately on mount
     checkPaymentStatus();
 
-    // Check every 3 seconds
-    const interval = setInterval(checkPaymentStatus, 3000);
+    // Check every 5 seconds (reduced from 3)
+    const interval = setInterval(checkPaymentStatus, 5000);
     return () => clearInterval(interval);
-  }, [table?.id, hasActiveSession]);
+  }, [table?.id, hasActiveSession, sessionId]);
 
   const handleAdd = (item: any, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -113,8 +149,7 @@ function MenuContent() {
     console.log('Loading active orders for table:', table.id);
     setLoadingOrders(true);
     try {
-      const deviceSessionId = getDeviceSessionId();
-      const orders: any = await api.getActiveOrders(table.id, deviceSessionId);
+      const orders: any = await api.getActiveOrders(table.id);
       console.log('Active orders received:', orders);
       setActiveOrders(orders);
     } catch (err) {
@@ -167,6 +202,29 @@ function MenuContent() {
 
   return (
     <div className="min-h-screen bg-[#fff8f3] pb-32">
+      {/* Table Occupied Warning */}
+      {occupiedByOther && !hasActiveSession && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🚫</span>
+              </div>
+              <h2 className="text-xl font-black text-gray-900 mb-2">Table Occupied</h2>
+              <p className="text-gray-600 text-sm mb-6">
+                This table is currently being used by another customer. Please wait for them to finish or contact staff.
+              </p>
+              <button 
+                onClick={() => router.push('/')} 
+                className="btn-primary w-full"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white sticky top-0 z-20 border-b border-orange-100 shadow-sm shadow-orange-50">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-3">

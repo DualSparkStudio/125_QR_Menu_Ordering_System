@@ -184,9 +184,6 @@ model Order {
 
   orderNumber  String @unique
 
-  // Device session tracking (for multi-device at same table)
-  deviceSessionId String?
-
   // Guest info
   guestName    String?
   guestPhone   String?
@@ -228,8 +225,6 @@ model Order {
 
   @@index([restaurantId])
   @@index([tableId])
-  @@index([deviceSessionId])
-  @@index([tableId, deviceSessionId])
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])

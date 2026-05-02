@@ -123,11 +123,8 @@ export const api = {
   createOrder: (restaurantId: string, tableId: string, data: any) =>
     req(`/restaurants/${restaurantId}/tables/${tableId}/orders`, { method: 'POST', body: JSON.stringify(data) }),
   
-  getActiveOrders: (tableId: string, deviceSessionId?: string) => {
-    const params = new URLSearchParams();
-    if (deviceSessionId) params.append('deviceSessionId', deviceSessionId);
-    return req(`/tables/${tableId}/orders/active?${params}`);
-  },
+  getActiveOrders: (tableId: string) =>
+    req(`/tables/${tableId}/orders/active`),
   
   getOrder: (orderId: string) =>
     req(`/orders/${orderId}`),
