@@ -50,7 +50,6 @@ export const handler: Handler = async (event) => {
               preparationTime: true,
               displayOrder: true,
               variants: isAdmin ? true : {
-                where: { isActive: true },
                 select: {
                   id: true,
                   name: true,
