@@ -50,31 +50,15 @@ export default function OrdersPage() {
   };
 
   const printBill = async (order: any) => {
-    if (!staff?.restaurantId || !token) {
-      console.error('Missing staff or token:', { staff, token });
-      return;
-    }
-
     console.log('Starting printBill for order:', order.id);
-    console.log('Restaurant ID:', staff.restaurantId);
-    console.log('Order restaurant data:', order.restaurant);
+    console.log('Order data:', order);
 
-    // Fetch latest restaurant details to ensure we have current info
-    let restaurantDetails = order.restaurant;
-    try {
-      console.log('Fetching restaurant details from API...');
-      restaurantDetails = await adminApi.getRestaurant(staff.restaurantId, token);
-      console.log('✅ Fetched restaurant details:', restaurantDetails);
-    } catch (err) {
-      console.error('❌ Failed to fetch restaurant details:', err);
-      // Fall back to order.restaurant if fetch fails
-      console.log('Using fallback restaurant details:', restaurantDetails);
-    }
+    // Use restaurant details from the order (already included in API response)
+    const restaurantDetails = order.restaurant;
 
-    // Ensure we have restaurant details before proceeding
     if (!restaurantDetails) {
-      console.error('No restaurant details available!');
-      alert('Unable to fetch restaurant details. Please try again.');
+      console.error('No restaurant details in order!');
+      alert('Unable to load restaurant details. Please refresh the page and try again.');
       return;
     }
 
