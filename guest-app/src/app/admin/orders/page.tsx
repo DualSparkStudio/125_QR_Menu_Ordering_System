@@ -373,7 +373,7 @@ export default function OrdersPage() {
                             {updating === order.id ? '...' : NEXT_LABEL[order.status]}
                           </button>
                         )}
-                        {['pending', 'confirmed'].includes(order.status) && (
+                        {order.status === 'pending' && (
                           <button onClick={() => cancel(order.id)} disabled={updating === order.id}
                             className="btn-danger text-xs px-3 py-2">✕</button>
                         )}

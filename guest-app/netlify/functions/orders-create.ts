@@ -140,12 +140,26 @@ export const handler: Handler = async (event) => {
 
     let discountAmount = dto.discountAmount || 0;
     let couponId: string | undefined;
-    if (dto.couponCode) {
+    if (dto.couponCode && dto.sessionId) {
       const coupon = await prisma.coupon.findFirst({
         where: { restaurantId, code: dto.couponCode, isActive: true },
       });
       if (coupon && (!coupon.expiresAt || coupon.expiresAt > new Date())) {
         if (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit) {
+          // Check if this sessionId has already used this coupon in any order
+          const existingCouponUsage = await prisma.order.findFirst({
+            where: {
+              tableId,
+              couponCode: dto.couponCode,
+              status: { not: 'cancelled' },
+            },
+          });
+          
+          if (existingCouponUsage) {
+            // User already used this coupon
+            return error('You have already used this coupon', 400);
+          }
+          
           if (subtotal >= coupon.minOrderValue) {
             discountAmount = coupon.discountType === 'percentage'
               ? Math.min(subtotal * coupon.discountValue / 100, coupon.maxDiscount || Infinity)

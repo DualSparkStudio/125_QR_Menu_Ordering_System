@@ -28,7 +28,7 @@ export const handler: Handler = async (event) => {
     if (event.httpMethod === 'POST') {
       if (isValidate) {
         // POST /restaurants/:restaurantId/coupons/validate
-        const { code, orderAmount } = JSON.parse(event.body || '{}');
+        const { code, orderAmount, tableId } = JSON.parse(event.body || '{}');
         if (!code || orderAmount === undefined) {
           return error('Code and orderAmount are required', 400);
         }
@@ -44,6 +44,21 @@ export const handler: Handler = async (event) => {
         if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
           return error('Coupon usage limit reached', 400);
         }
+        
+        // Check if this table has already used this coupon
+        if (tableId) {
+          const existingUsage = await prisma.order.findFirst({
+            where: {
+              tableId,
+              couponCode: code,
+              status: { not: 'cancelled' },
+            },
+          });
+          if (existingUsage) {
+            return error('You have already used this coupon', 400);
+          }
+        }
+        
         if (orderAmount < coupon.minOrderValue) {
           return error(`Minimum order value is ${coupon.minOrderValue}`, 400);
         }
