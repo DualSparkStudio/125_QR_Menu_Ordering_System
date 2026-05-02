@@ -44,8 +44,13 @@ export default function CartPage() {
     setCouponError('');
     try {
       const result: any = await api.validateCoupon(restaurantId, couponCode, subtotal);
-      setCouponDiscount(result.discount); setCouponApplied(true);
-    } catch (e: any) { setCouponError(e.message); setCouponDiscount(0); setCouponApplied(false); }
+      setCouponDiscount(result.discountAmount || 0); 
+      setCouponApplied(true);
+    } catch (e: any) { 
+      setCouponError(e.message); 
+      setCouponDiscount(0); 
+      setCouponApplied(false); 
+    }
   };
 
   const handleCouponChange = (e: React.ChangeEvent<HTMLInputElement>) => {
