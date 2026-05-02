@@ -55,8 +55,40 @@ export default function OrdersPage() {
   };
 
   const printBill = (order: any) => {
+    console.log('Starting printBill for order:', order.id);
+    console.log('Order data:', order);
+
+    // Use restaurant details from the order (already included in API response)
+    const restaurantDetails = order.restaurant;
+
+    if (!restaurantDetails) {
+      console.error('No restaurant details in order!');
+      alert('Unable to load restaurant details. Please refresh the page and try again.');
+      return;
+    }
+
+    // Extract values to ensure they're properly evaluated
+    const restaurantName = restaurantDetails.name || 'Restaurant';
+    const restaurantAddress = restaurantDetails.address || '';
+    const restaurantPhone = restaurantDetails.phone || '';
+    const restaurantEmail = restaurantDetails.email || '';
+    const taxPercentage = restaurantDetails.taxPercentage || 0;
+    const serviceChargePercentage = restaurantDetails.serviceChargePercentage || 0;
+
+    console.log('Restaurant details for bill:', {
+      restaurantName,
+      restaurantAddress,
+      restaurantPhone,
+      restaurantEmail,
+      taxPercentage,
+      serviceChargePercentage
+    });
+
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      console.error('Failed to open print window');
+      return;
+    }
 
     const html = `
       <!DOCTYPE html>
@@ -65,10 +97,11 @@ export default function OrdersPage() {
         <title>Bill - Order #${order.orderNumber}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Courier New', monospace; padding: 20px; max-width: 400px; margin: 0 auto; }
-          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-          .restaurant { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-          .order-num { font-size: 14px; margin-bottom: 5px; }
+          body { font-family: 'Courier New', monospace; padding: 20px; max-width: 400px; margin: 0 auto; font-size: 14px; line-height: 1.6; }
+          .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 15px; margin-bottom: 15px; }
+          .restaurant { font-size: 24px; font-weight: bold; margin-bottom: 8px; }
+          .restaurant-info { font-size: 12px; margin: 2px 0; }
+          .order-num { font-size: 14px; margin-bottom: 5px; font-weight: bold; }
           .table-info { font-size: 12px; margin-bottom: 5px; }
           .date { font-size: 11px; color: #666; }
           .items { margin: 15px 0; }
@@ -77,11 +110,12 @@ export default function OrdersPage() {
           .item-qty { width: 40px; text-align: center; }
           .item-price { width: 80px; text-align: right; }
           .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .divider-thick { border-top: 2px solid #000; margin: 15px 0; }
           .totals { margin: 10px 0; }
           .total-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
-          .total-row.grand { font-weight: bold; font-size: 16px; border-top: 2px solid #000; padding-top: 8px; margin-top: 8px; }
-          .payment-status { text-align: center; margin: 15px 0; padding: 8px; border: 2px solid #000; font-weight: bold; }
-          .footer { text-align: center; margin-top: 20px; font-size: 11px; border-top: 2px dashed #000; padding-top: 10px; }
+          .total-row.grand { font-weight: bold; font-size: 18px; border-top: 2px solid #000; padding-top: 10px; margin-top: 10px; }
+          .payment-status { text-align: center; margin: 20px 0; padding: 15px; border: 3px solid #000; font-weight: bold; font-size: 18px; }
+          .footer { text-align: center; margin-top: 20px; font-size: 13px; border-top: 2px dashed #000; padding-top: 15px; }
           @media print {
             body { padding: 10px; }
             @page { margin: 10mm; }
@@ -90,11 +124,26 @@ export default function OrdersPage() {
       </head>
       <body>
         <div class="header">
-          <div class="restaurant">Restaurant</div>
-          <div class="order-num">Order #${order.orderNumber}</div>
-          <div class="table-info">Table ${order.table?.tableNumber} · ${order.table?.section}</div>
-          <div class="date">${new Date(order.createdAt).toLocaleString()}</div>
+          <div class="restaurant">${restaurantName}</div>
+          ${restaurantAddress ? `<p class="restaurant-info">${restaurantAddress}</p>` : ''}
+          ${restaurantPhone ? `<p class="restaurant-info">📞 ${restaurantPhone}</p>` : ''}
+          ${restaurantEmail ? `<p class="restaurant-info">✉️ ${restaurantEmail}</p>` : ''}
         </div>
+
+        <div style="text-align: center; margin: 15px 0; padding: 10px 0; border-bottom: 2px dashed #000;">
+          <div class="order-num">Order #${order.orderNumber}</div>
+          <div class="table-info">Table ${order.table?.tableNumber} · ${order.table?.section || 'Main'}</div>
+          <div class="date">${new Date(order.createdAt).toLocaleString('en-IN', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+          })}</div>
+        </div>
+
+        <div class="divider-thick"></div>
 
         <div class="items">
           ${order.items?.map((item: any) => `
@@ -111,35 +160,39 @@ export default function OrdersPage() {
         <div class="totals">
           <div class="total-row">
             <span>Subtotal</span>
-            <span>₹${order.subtotal?.toFixed(2)}</span>
+            <span>₹${(order.subtotal || 0).toFixed(2)}</span>
           </div>
-          ${order.taxAmount > 0 ? `
+          ${(order.taxAmount || 0) > 0 ? `
             <div class="total-row">
-              <span>Tax</span>
-              <span>₹${order.taxAmount?.toFixed(2)}</span>
+              <span>Tax (${taxPercentage}%)</span>
+              <span>₹${(order.taxAmount || 0).toFixed(2)}</span>
             </div>
           ` : ''}
-          ${order.serviceCharge > 0 ? `
+          ${(order.serviceCharge || 0) > 0 ? `
             <div class="total-row">
-              <span>Service Charge</span>
-              <span>₹${order.serviceCharge?.toFixed(2)}</span>
+              <span>Service Charge (${serviceChargePercentage}%)</span>
+              <span>₹${(order.serviceCharge || 0).toFixed(2)}</span>
             </div>
           ` : ''}
-          ${order.discountAmount > 0 ? `
+          ${(order.discountAmount || 0) > 0 ? `
             <div class="total-row">
-              <span>Discount</span>
-              <span>-₹${order.discountAmount?.toFixed(2)}</span>
+              <span>Discount ${order.couponCode ? `(${order.couponCode})` : ''}</span>
+              <span>-₹${(order.discountAmount || 0).toFixed(2)}</span>
             </div>
           ` : ''}
           <div class="total-row grand">
             <span>TOTAL</span>
-            <span>₹${order.totalAmount?.toFixed(2)}</span>
+            <span>₹${(order.totalAmount || 0).toFixed(2)}</span>
           </div>
         </div>
+
+        <div class="divider-thick"></div>
 
         <div class="payment-status">
           ${order.paymentStatus === 'completed' ? '✓ PAID' : 'UNPAID - Pay at Counter'}
         </div>
+
+        <div class="divider-thick"></div>
 
         <div class="footer">
           <p>Thank you for dining with us!</p>
