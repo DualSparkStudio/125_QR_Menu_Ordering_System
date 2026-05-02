@@ -101,19 +101,17 @@ export class PushNotificationService {
         this.registration.showNotification(title, {
           icon: '/icon-192x192.png',
           badge: '/icon-96x96.png',
-          vibrate: [200, 100, 200],
           tag: 'order-notification',
           renotify: true,
           requireInteraction: true,
           ...options,
-        });
+        } as NotificationOptions);
       } else {
         // Fallback to regular notification
         new Notification(title, {
           icon: '/icon-192x192.png',
-          vibrate: [200, 100, 200],
           ...options,
-        });
+        } as NotificationOptions);
       }
 
       // Play sound
