@@ -22,6 +22,17 @@ export const handler: Handler = async (event) => {
         table: true,
         payment: true,
         review: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            email: true,
+            taxPercentage: true,
+            serviceChargePercentage: true,
+          },
+        },
       },
     });
 

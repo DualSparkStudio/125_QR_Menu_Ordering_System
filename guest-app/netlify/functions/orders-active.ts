@@ -17,7 +17,20 @@ export const handler: Handler = async (event) => {
   try {
     const orders = await prisma.order.findMany({
       where: { tableId, status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] } },
-      include: { items: { include: { menuItem: true } } },
+      include: { 
+        items: { include: { menuItem: true } },
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            email: true,
+            taxPercentage: true,
+            serviceChargePercentage: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 

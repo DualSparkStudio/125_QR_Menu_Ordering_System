@@ -167,18 +167,47 @@ export default function CartPage() {
         </Section>
 
         {/* Bill */}
-        <Section title="Bill Summary">
+        <div className="card p-5 shadow-sm shadow-orange-50">
+          {/* Restaurant Details Header */}
+          {restaurant && (
+            <div className="text-center border-b border-orange-100 pb-4 mb-4">
+              <h2 className="font-black text-stone-900 text-lg mb-1">{restaurant.name}</h2>
+              {restaurant.address && (
+                <p className="text-stone-500 text-xs">{restaurant.address}</p>
+              )}
+              {restaurant.phone && (
+                <p className="text-stone-500 text-xs mt-0.5">📞 {restaurant.phone}</p>
+              )}
+            </div>
+          )}
+
+          <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-4">Bill Summary</h3>
           <div className="space-y-2.5">
-            <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">{currency} {subtotal.toFixed(0)}</span></div>
-            {tax > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Tax ({restaurant?.taxPercentage}%)</span><span className="text-stone-900 font-medium">{currency} {tax.toFixed(0)}</span></div>}
-            {serviceCharge > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Service Charge</span><span className="text-stone-900 font-medium">{currency} {serviceCharge.toFixed(0)}</span></div>}
-            {couponDiscount > 0 && <div className="flex justify-between text-sm"><span className="text-green-600 font-semibold">Discount</span><span className="text-green-600 font-semibold">− {currency} {couponDiscount.toFixed(0)}</span></div>}
-            <div className="border-t border-orange-100 pt-3 flex justify-between items-center">
-              <span className="font-bold text-stone-900">Total</span>
-              <span className="font-black text-orange-500 text-2xl">{currency} {total.toFixed(0)}</span>
+            <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">{currency}{subtotal.toFixed(2)}</span></div>
+            {tax > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">Tax ({restaurant?.taxPercentage || 0}%)</span>
+                <span className="text-stone-900 font-medium">{currency}{tax.toFixed(2)}</span>
+              </div>
+            )}
+            {serviceCharge > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">Service Charge ({restaurant?.serviceChargePercentage || 0}%)</span>
+                <span className="text-stone-900 font-medium">{currency}{serviceCharge.toFixed(2)}</span>
+              </div>
+            )}
+            {couponDiscount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-green-600 font-semibold">Discount {couponCode && `(${couponCode})`}</span>
+                <span className="text-green-600 font-semibold">−{currency}{couponDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            <div className="border-t-2 border-orange-200 pt-3 flex justify-between items-center">
+              <span className="font-bold text-stone-900 text-lg">Total Amount</span>
+              <span className="font-black text-orange-500 text-2xl">{currency}{total.toFixed(2)}</span>
             </div>
           </div>
-        </Section>
+        </div>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4 text-sm flex items-start gap-2"><span>⚠️</span><span>{error}</span></div>}
       </div>

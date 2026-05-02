@@ -255,22 +255,65 @@ function OrderContent() {
 
         {/* Bill */}
         <div className="card p-5 shadow-sm shadow-orange-50">
+          {/* Restaurant Details Header */}
+          <div className="text-center border-b border-orange-100 pb-4 mb-4">
+            <h2 className="font-black text-stone-900 text-lg mb-1">{order.restaurant?.name || restaurant?.name}</h2>
+            {order.restaurant?.address && (
+              <p className="text-stone-500 text-xs">{order.restaurant.address}</p>
+            )}
+            {order.restaurant?.phone && (
+              <p className="text-stone-500 text-xs mt-0.5">📞 {order.restaurant.phone}</p>
+            )}
+            {order.restaurant?.email && (
+              <p className="text-stone-500 text-xs">✉️ {order.restaurant.email}</p>
+            )}
+          </div>
+
+          {/* Bill Details */}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-stone-400 text-xs uppercase tracking-wider">Bill</h3>
+            <h3 className="font-bold text-stone-400 text-xs uppercase tracking-wider">Bill Summary</h3>
+            <span className="text-stone-400 text-xs">#{order.orderNumber}</span>
           </div>
+          
           <div className="space-y-2.5">
-            <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">₹{(order.subtotal || 0).toFixed(0)}</span></div>
-            {(order.taxAmount || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Tax</span><span className="text-stone-900 font-medium">₹{(order.taxAmount || 0).toFixed(0)}</span></div>}
-            {(order.serviceCharge || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Service Charge</span><span className="text-stone-900 font-medium">₹{(order.serviceCharge || 0).toFixed(0)}</span></div>}
-            {(order.discountAmount || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-green-600 font-semibold">Discount</span><span className="text-green-600 font-semibold">−₹{(order.discountAmount || 0).toFixed(0)}</span></div>}
+            <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">₹{(order.subtotal || 0).toFixed(2)}</span></div>
+            {(order.taxAmount || 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">Tax ({order.restaurant?.taxPercentage || 0}%)</span>
+                <span className="text-stone-900 font-medium">₹{(order.taxAmount || 0).toFixed(2)}</span>
+              </div>
+            )}
+            {(order.serviceCharge || 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">Service Charge ({order.restaurant?.serviceChargePercentage || 0}%)</span>
+                <span className="text-stone-900 font-medium">₹{(order.serviceCharge || 0).toFixed(2)}</span>
+              </div>
+            )}
+            {(order.discountAmount || 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-green-600 font-semibold">Discount {order.couponCode && `(${order.couponCode})`}</span>
+                <span className="text-green-600 font-semibold">−₹{(order.discountAmount || 0).toFixed(2)}</span>
+              </div>
+            )}
           </div>
-          <div className="border-t border-orange-100 mt-3 pt-3 flex justify-between items-center">
-            <span className="font-bold text-stone-900">Total</span>
-            <span className="font-black text-orange-500 text-2xl">₹{(order.totalAmount || 0).toFixed(0)}</span>
+          
+          <div className="border-t-2 border-orange-200 mt-3 pt-3 flex justify-between items-center">
+            <span className="font-bold text-stone-900 text-lg">Total Amount</span>
+            <span className="font-black text-orange-500 text-2xl">₹{(order.totalAmount || 0).toFixed(2)}</span>
           </div>
-          <div className="mt-3">
+          
+          <div className="mt-3 flex items-center justify-between">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${isPaidOrder ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
               {isPaidOrder ? '✓ Paid via Razorpay' : '⏳ Pay at table'}
+            </span>
+            <span className="text-stone-400 text-xs">
+              {new Date(order.createdAt).toLocaleString('en-IN', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit'
+              })}
             </span>
           </div>
         </div>
