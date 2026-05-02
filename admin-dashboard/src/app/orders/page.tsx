@@ -49,7 +49,18 @@ export default function OrdersPage() {
     try { await adminApi.updateOrderStatus(id, 'cancelled', token); await load(); } finally { setUpdating(null); }
   };
 
-  const printBill = (order: any) => {
+  const printBill = async (order: any) => {
+    if (!staff?.restaurantId || !token) return;
+
+    // Fetch latest restaurant details to ensure we have current info
+    let restaurantDetails = order.restaurant;
+    try {
+      restaurantDetails = await adminApi.getRestaurant(staff.restaurantId, token);
+    } catch (err) {
+      console.error('Failed to fetch restaurant details:', err);
+      // Fall back to order.restaurant if fetch fails
+    }
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -102,10 +113,10 @@ export default function OrdersPage() {
       </head>
       <body>
         <div class="header">
-          <h1>${order.restaurant?.name || 'Restaurant'}</h1>
-          ${order.restaurant?.address ? `<p>${order.restaurant.address}</p>` : ''}
-          ${order.restaurant?.phone ? `<p>📞 ${order.restaurant.phone}</p>` : ''}
-          ${order.restaurant?.email ? `<p>✉️ ${order.restaurant.email}</p>` : ''}
+          <h1>${restaurantDetails?.name || 'Restaurant'}</h1>
+          ${restaurantDetails?.address ? `<p>${restaurantDetails.address}</p>` : ''}
+          ${restaurantDetails?.phone ? `<p>📞 ${restaurantDetails.phone}</p>` : ''}
+          ${restaurantDetails?.email ? `<p>✉️ ${restaurantDetails.email}</p>` : ''}
         </div>
 
         <div class="order-info">
@@ -142,13 +153,13 @@ export default function OrdersPage() {
           </div>
           ${(order.taxAmount || 0) > 0 ? `
             <div class="summary-row">
-              <span>Tax (${order.restaurant?.taxPercentage || 0}%)</span>
+              <span>Tax (${restaurantDetails?.taxPercentage || 0}%)</span>
               <span>₹${(order.taxAmount || 0).toFixed(2)}</span>
             </div>
           ` : ''}
           ${(order.serviceCharge || 0) > 0 ? `
             <div class="summary-row">
-              <span>Service Charge (${order.restaurant?.serviceChargePercentage || 0}%)</span>
+              <span>Service Charge (${restaurantDetails?.serviceChargePercentage || 0}%)</span>
               <span>₹${(order.serviceCharge || 0).toFixed(2)}</span>
             </div>
           ` : ''}
