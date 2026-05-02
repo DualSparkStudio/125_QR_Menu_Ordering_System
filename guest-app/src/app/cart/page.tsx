@@ -10,6 +10,14 @@ import Link from 'next/link';
 
 declare global { interface Window { Razorpay: any; } }
 
+// Move Section component outside to prevent re-creation on every render
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="card p-5 shadow-sm shadow-orange-50">
+    <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-4">{title}</h3>
+    {children}
+  </div>
+);
+
 export default function CartPage() {
   const router = useRouter();
   const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession } = useCartStore();
@@ -38,6 +46,14 @@ export default function CartPage() {
       const result: any = await api.validateCoupon(restaurantId, couponCode, subtotal);
       setCouponDiscount(result.discount); setCouponApplied(true);
     } catch (e: any) { setCouponError(e.message); setCouponDiscount(0); setCouponApplied(false); }
+  };
+
+  const handleCouponChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase();
+    setCouponCode(val);
+    setCouponDiscount(0);
+    setCouponApplied(false);
+    setCouponError('');
   };
 
   const createPayload = () => ({
@@ -94,13 +110,6 @@ export default function CartPage() {
     </div>
   );
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="card p-5 shadow-sm shadow-orange-50">
-      <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-4">{title}</h3>
-      {children}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#fff8f3] pb-44">
       {/* Header */}
@@ -153,8 +162,12 @@ export default function CartPage() {
         {/* Coupon */}
         <Section title="Coupon Code">
           <div className="flex gap-2">
-            <input value={couponCode} onChange={(e) => { const val = e.target.value.toUpperCase(); setCouponCode(val); setCouponDiscount(0); setCouponApplied(false); setCouponError(''); }}
-              placeholder="e.g. WELCOME20" className="input-field flex-1 font-mono tracking-widest" />
+            <input 
+              value={couponCode} 
+              onChange={handleCouponChange}
+              placeholder="e.g. WELCOME20" 
+              className="input-field flex-1 font-mono tracking-widest" 
+            />
             <button onClick={applyCoupon} className="btn-secondary px-5 font-bold">Apply</button>
           </div>
           {couponError && <p className="text-red-500 text-xs mt-2">{couponError}</p>}
