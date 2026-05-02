@@ -52,6 +52,16 @@
     Cache-Control = "private, max-age=3, s-maxage=3"
 
 [[redirects]]
+  from = "/api/push/subscribe"
+  to = "/.netlify/functions/push-subscribe"
+  status = 200
+
+[[redirects]]
+  from = "/api/push/send"
+  to = "/.netlify/functions/push-send"
+  status = 200
+
+[[redirects]]
   from = "/api/auth/staff/login"
   to = "/.netlify/functions/auth-staff-login"
   status = 200

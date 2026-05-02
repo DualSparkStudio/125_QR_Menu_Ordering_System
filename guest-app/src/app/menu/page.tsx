@@ -6,6 +6,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useRestaurantStore } from '@/store/restaurantStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 
 const SPICE = ['', '🌶', '🌶🌶', '🌶🌶🌶'];
 
@@ -124,6 +125,19 @@ function MenuContent() {
     const interval = setInterval(checkPaymentStatus, 10000);
     return () => clearInterval(interval);
   }, [table?.id, hasActiveSession, sessionId]);
+
+  // Set up realtime notifications for order status updates
+  useRealtimeNotifications({
+    tableId: table?.id,
+    userType: 'guest',
+    onOrderUpdate: (order) => {
+      console.log('Order status updated:', order);
+      // Reload active orders
+      if (showOrders) {
+        loadActiveOrders();
+      }
+    },
+  });
 
   const handleAdd = (item: any, e?: React.MouseEvent) => {
     e?.stopPropagation();

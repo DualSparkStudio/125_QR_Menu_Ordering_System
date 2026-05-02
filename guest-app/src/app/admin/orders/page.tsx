@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 
 const NEXT: Record<string, string> = {
   pending: 'confirmed', confirmed: 'preparing', preparing: 'ready', ready: 'served', served: 'completed',
@@ -77,6 +78,27 @@ export default function OrdersPage() {
       window.location.href = '/admin';
     }
   }, [token, loading]);
+
+  // Set up realtime notifications
+  useRealtimeNotifications({
+    restaurantId: staff?.restaurantId,
+    userType: 'admin',
+    onNewOrder: (order) => {
+      console.log('New order received:', order);
+      // Reload orders immediately
+      load();
+    },
+    onOrderUpdate: (order) => {
+      console.log('Order updated:', order);
+      // Update order in list optimistically
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...order } : o));
+    },
+    onNewItem: (item) => {
+      console.log('New item added:', item);
+      // Reload orders to show new item
+      load();
+    },
+  });
 
   // OPTIMISTIC UPDATE - Update UI instantly, sync in background
   const changeStatus = async (orderId: string, newStatus: string) => {
