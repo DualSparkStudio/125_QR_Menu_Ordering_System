@@ -59,7 +59,7 @@ export class PushNotificationService {
         // Create new subscription
         this.subscription = await this.registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
         });
 
         // Send subscription to server
