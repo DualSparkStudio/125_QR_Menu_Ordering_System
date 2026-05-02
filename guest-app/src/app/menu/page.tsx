@@ -50,7 +50,7 @@ function MenuContent() {
     if (categories.length && !activeCategory) setActiveCategory(categories[0].id);
   }, [categories]);
 
-  // Check if table is occupied by another session
+  // Check if table is occupied
   useEffect(() => {
     if (!table?.id) return;
 
@@ -58,19 +58,10 @@ function MenuContent() {
       try {
         const orders: any = await api.getActiveOrders(table.id);
         
+        // If there are ANY active orders, table is occupied
         if (orders.length > 0) {
           setTableOccupied(true);
-          // Check if any order belongs to a different session
-          const hasOtherSession = orders.some((order: any) => 
-            order.sessionId && order.sessionId !== sessionId
-          );
-          setOccupiedByOther(hasOtherSession);
-          
-          // If occupied by another session and user has no active session, show warning
-          if (hasOtherSession && !hasActiveSession) {
-            // Don't allow ordering
-            return;
-          }
+          setOccupiedByOther(true);
         } else {
           setTableOccupied(false);
           setOccupiedByOther(false);
@@ -84,7 +75,7 @@ function MenuContent() {
     // Check every 5 seconds
     const interval = setInterval(checkTableStatus, 5000);
     return () => clearInterval(interval);
-  }, [table?.id, sessionId, hasActiveSession]);
+  }, [table?.id]);
 
   // Listen for payment completion events - ONLY if user has active session
   useEffect(() => {
@@ -203,7 +194,7 @@ function MenuContent() {
   return (
     <div className="min-h-screen bg-[#fff8f3] pb-32">
       {/* Table Occupied Warning */}
-      {occupiedByOther && !hasActiveSession && (
+      {occupiedByOther && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
             <div className="text-center">
@@ -212,7 +203,7 @@ function MenuContent() {
               </div>
               <h2 className="text-xl font-black text-gray-900 mb-2">Table Occupied</h2>
               <p className="text-gray-600 text-sm mb-6">
-                This table is currently being used by another customer. Please wait for them to finish or contact staff.
+                This table is currently being used. Please wait for the current order to be completed or contact staff for assistance.
               </p>
               <button 
                 onClick={() => router.push('/')} 
