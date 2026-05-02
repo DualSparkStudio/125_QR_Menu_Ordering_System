@@ -79,13 +79,17 @@ export default function CartPage() {
       const order: any = await api.createOrder(restaurantId, tableId, createPayload());
       setCurrentOrder(order);
       setActiveSession(true); // Mark that user has placed an order
-      clearCart();
+      
+      // Navigate first, then clear cart to avoid showing empty state
+      router.push(`/orders/${order.id}?new=1`);
+      
+      // Clear cart after navigation starts
+      setTimeout(() => {
+        clearCart();
+      }, 100);
       
       // Show merge notice if items were added to existing order
       if (hasActiveOrder) {
-        setShowMergeNotice(true);
-        setTimeout(() => setShowMergeNotice(false), 5000);
-        
         // Show browser notification
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('Items Added!', {
@@ -99,9 +103,7 @@ export default function CartPage() {
           navigator.vibrate([200, 100, 200]);
         }
       }
-      
-      router.push(`/orders/${order.id}?new=1`);
-    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
+    } catch (e: any) { setError(e.message); setLoading(false); }
   };
 
   if (cart.length === 0) return (
@@ -238,9 +240,18 @@ export default function CartPage() {
             <span className="text-orange-500 font-black text-lg">{currency} {total.toFixed(0)}</span>
           </div>
           <button onClick={handlePayLater} disabled={loading}
-            className="btn-primary w-full flex items-center justify-center gap-3 text-lg disabled:opacity-60">
-            {loading ? <><div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /><span>Processing...</span></> :
-              <span>🍽️ Place Order</span>}
+            className="btn-primary w-full flex items-center justify-center gap-3 text-lg disabled:opacity-60 disabled:cursor-not-allowed">
+            {loading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span>Placing order...</span>
+              </>
+            ) : (
+              <>
+                <span>🍽️</span>
+                <span>Place Order</span>
+              </>
+            )}
           </button>
         </div>
       </div>
