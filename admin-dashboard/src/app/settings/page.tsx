@@ -11,6 +11,7 @@ export default function SettingsPage() {
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [errors, setErrors] = useState<any>({});
 
   useEffect(() => {
     if (!staff?.restaurantId || !token) return;
@@ -20,15 +21,71 @@ export default function SettingsPage() {
     });
   }, [staff, token]);
 
+  const validateForm = () => {
+    const newErrors: any = {};
+    
+    if (!form.name || form.name.trim().length < 2) {
+      newErrors.name = 'Restaurant name must be at least 2 characters';
+    }
+    
+    if (!form.phone || !/^\+?[\d\s-]{10,}$/.test(form.phone)) {
+      newErrors.phone = 'Please enter a valid phone number';
+    }
+    
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!form.address || form.address.trim().length < 5) {
+      newErrors.address = 'Address must be at least 5 characters';
+    }
+    
+    if (form.taxPercentage < 0 || form.taxPercentage > 100) {
+      newErrors.taxPercentage = 'Tax must be between 0 and 100%';
+    }
+    
+    if (form.serviceChargePercentage < 0 || form.serviceChargePercentage > 100) {
+      newErrors.serviceChargePercentage = 'Service charge must be between 0 and 100%';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const save = async () => {
     if (!staff?.restaurantId || !token) return;
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setSaving(true);
-    try { await adminApi.updateRestaurant(staff.restaurantId, form, token); setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    try { 
+      await adminApi.updateRestaurant(staff.restaurantId, form, token); 
+      setSaved(true); 
+      setErrors({});
+      setTimeout(() => setSaved(false), 3000); 
+    }
+    catch (err: any) {
+      setErrors({ general: err.message || 'Failed to save settings' });
+    }
     finally { setSaving(false); }
   };
 
-  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div><label className="label">{label}</label>{children}</div>
+  const handleInputChange = (field: string, value: any) => {
+    setForm((prev: any) => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors((prev: any) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const F = ({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) => (
+    <div>
+      <label className="label">{label}</label>
+      {children}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
   );
 
   if (!restaurant) return (
@@ -53,12 +110,22 @@ export default function SettingsPage() {
             <h2 className="font-bold text-gray-700 text-sm mb-4 uppercase tracking-wider">Basic Info</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <F label="Restaurant Name"><input value={form.name || ''} onChange={(e) => setForm((f: any) => ({ ...f, name: e.target.value }))} className="input" /></F>
-                <F label="Phone"><input value={form.phone || ''} onChange={(e) => setForm((f: any) => ({ ...f, phone: e.target.value }))} className="input" /></F>
+                <F label="Restaurant Name" error={errors.name}>
+                  <input value={form.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} className="input" required />
+                </F>
+                <F label="Phone" error={errors.phone}>
+                  <input value={form.phone || ''} onChange={(e) => handleInputChange('phone', e.target.value)} className="input" type="tel" required />
+                </F>
               </div>
-              <F label="Email"><input value={form.email || ''} onChange={(e) => setForm((f: any) => ({ ...f, email: e.target.value }))} type="email" className="input" /></F>
-              <F label="Address"><input value={form.address || ''} onChange={(e) => setForm((f: any) => ({ ...f, address: e.target.value }))} className="input" /></F>
-              <F label="Description"><textarea value={form.description || ''} onChange={(e) => setForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="input resize-none" /></F>
+              <F label="Email" error={errors.email}>
+                <input value={form.email || ''} onChange={(e) => handleInputChange('email', e.target.value)} type="email" className="input" required />
+              </F>
+              <F label="Address" error={errors.address}>
+                <input value={form.address || ''} onChange={(e) => handleInputChange('address', e.target.value)} className="input" required />
+              </F>
+              <F label="Description">
+                <textarea value={form.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} rows={2} className="input resize-none" />
+              </F>
             </div>
           </div>
 
@@ -66,11 +133,11 @@ export default function SettingsPage() {
           <div className="card p-5">
             <h2 className="font-bold text-gray-700 text-sm mb-4 uppercase tracking-wider">Pricing & Taxes</h2>
             <div className="grid grid-cols-2 gap-3">
-              <F label="Tax (%)">
-                <input value={form.taxPercentage || 0} onChange={(e) => setForm((f: any) => ({ ...f, taxPercentage: parseFloat(e.target.value) }))} type="number" min="0" max="100" step="0.5" className="input" />
+              <F label="Tax (%)" error={errors.taxPercentage}>
+                <input value={form.taxPercentage || 0} onChange={(e) => handleInputChange('taxPercentage', parseFloat(e.target.value) || 0)} type="number" min="0" max="100" step="0.5" className="input" />
               </F>
-              <F label="Service Charge (%)">
-                <input value={form.serviceChargePercentage || 0} onChange={(e) => setForm((f: any) => ({ ...f, serviceChargePercentage: parseFloat(e.target.value) }))} type="number" min="0" max="100" step="0.5" className="input" />
+              <F label="Service Charge (%)" error={errors.serviceChargePercentage}>
+                <input value={form.serviceChargePercentage || 0} onChange={(e) => handleInputChange('serviceChargePercentage', parseFloat(e.target.value) || 0)} type="number" min="0" max="100" step="0.5" className="input" />
               </F>
             </div>
           </div>
@@ -93,6 +160,12 @@ export default function SettingsPage() {
               {form.isOpen ? 'Restaurant is Open' : 'Restaurant is Closed'}
             </div>
           </div>
+
+          {errors.general && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 text-sm flex items-center gap-2">
+              <span>⚠️</span> {errors.general}
+            </div>
+          )}
 
           {saved && (
             <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-3 text-sm flex items-center gap-2">

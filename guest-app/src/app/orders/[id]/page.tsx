@@ -255,20 +255,6 @@ function OrderContent() {
 
         {/* Bill */}
         <div className="card p-5 shadow-sm shadow-orange-50">
-          {/* Restaurant Details Header */}
-          <div className="text-center border-b border-orange-100 pb-4 mb-4">
-            <h2 className="font-black text-stone-900 text-lg mb-1">{order.restaurant?.name}</h2>
-            {order.restaurant?.address && (
-              <p className="text-stone-500 text-xs">{order.restaurant.address}</p>
-            )}
-            {order.restaurant?.phone && (
-              <p className="text-stone-500 text-xs mt-0.5">📞 {order.restaurant.phone}</p>
-            )}
-            {order.restaurant?.email && (
-              <p className="text-stone-500 text-xs">✉️ {order.restaurant.email}</p>
-            )}
-          </div>
-
           {/* Bill Details */}
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-stone-400 text-xs uppercase tracking-wider">Bill Summary</h3>
