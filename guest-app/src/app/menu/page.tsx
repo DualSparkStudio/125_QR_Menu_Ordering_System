@@ -50,7 +50,7 @@ function MenuContent() {
     if (categories.length && !activeCategory) setActiveCategory(categories[0].id);
   }, [categories]);
 
-  // Check if table is occupied
+  // Check if table is occupied by ANOTHER session
   useEffect(() => {
     if (!table?.id) return;
 
@@ -58,8 +58,8 @@ function MenuContent() {
       try {
         const orders: any = await api.getActiveOrders(table.id);
         
-        // If there are ANY active orders, table is occupied
-        if (orders.length > 0) {
+        // If there are active orders AND user doesn't have an active session, table is occupied
+        if (orders.length > 0 && !hasActiveSession) {
           setTableOccupied(true);
           setOccupiedByOther(true);
         } else {
@@ -72,10 +72,10 @@ function MenuContent() {
     };
 
     checkTableStatus();
-    // Check every 5 seconds
-    const interval = setInterval(checkTableStatus, 5000);
+    // Check every 10 seconds (reduced frequency)
+    const interval = setInterval(checkTableStatus, 10000);
     return () => clearInterval(interval);
-  }, [table?.id]);
+  }, [table?.id, hasActiveSession]);
 
   // Listen for payment completion events - ONLY if user has active session
   useEffect(() => {
@@ -120,8 +120,8 @@ function MenuContent() {
     // Check immediately on mount
     checkPaymentStatus();
 
-    // Check every 5 seconds (reduced from 3)
-    const interval = setInterval(checkPaymentStatus, 5000);
+    // Check every 10 seconds (reduced from 5)
+    const interval = setInterval(checkPaymentStatus, 10000);
     return () => clearInterval(interval);
   }, [table?.id, hasActiveSession, sessionId]);
 
