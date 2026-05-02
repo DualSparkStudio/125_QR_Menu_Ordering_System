@@ -37,14 +37,14 @@ function MenuContent() {
   useEffect(() => {
     if (!code) { router.push('/'); return; }
     fetchByQR(code);
-  }, [code]);
+  }, [code, fetchByQR]);
 
   useEffect(() => {
     if (restaurant && table) { 
       fetchCategories(restaurant.id); 
       setContext(table.id, restaurant.id); 
     }
-  }, [restaurant?.id, table?.id]);
+  }, [restaurant?.id, table?.id, fetchCategories, setContext]);
 
   useEffect(() => {
     if (categories.length && !activeCategory) setActiveCategory(categories[0].id);

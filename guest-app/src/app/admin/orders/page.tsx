@@ -33,7 +33,14 @@ export default function OrdersPage() {
   };
 
   useEffect(() => { load(); }, [filter, staff, token]);
-  useEffect(() => { const t = setInterval(load, 20000); return () => clearInterval(t); }, [filter, staff, token]);
+  useEffect(() => { 
+    // Only poll for active orders, not completed/cancelled
+    const shouldPoll = !filter || ['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(filter);
+    if (!shouldPoll) return;
+    
+    const t = setInterval(load, 10000); // Reduced from 20s to 10s for active orders only
+    return () => clearInterval(t); 
+  }, [filter, staff, token]);
 
   const advance = async (id: string, status: string) => {
     const next = NEXT[status];

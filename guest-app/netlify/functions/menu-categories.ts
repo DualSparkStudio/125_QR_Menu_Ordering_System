@@ -16,14 +16,48 @@ export const handler: Handler = async (event) => {
     if (event.httpMethod === 'GET') {
       // GET /restaurants/:restaurantId/menu/categories or /categories/admin
       const categories = await prisma.category.findMany({
-        where: { restaurantId, deletedAt: null },
-        include: {
+        where: { 
+          restaurantId, 
+          deletedAt: null,
+          ...(isAdmin ? {} : { isActive: true })
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          icon: true,
+          image: true,
+          displayOrder: true,
+          isActive: true,
           items: {
             where: { 
               deletedAt: null,
               ...(isAdmin ? {} : { isAvailable: true })
             },
-            include: { variants: true },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              image: true,
+              basePrice: true,
+              isVegetarian: true,
+              isVegan: true,
+              isGlutenFree: true,
+              spiceLevel: true,
+              calories: true,
+              isAvailable: true,
+              isFeatured: true,
+              preparationTime: true,
+              displayOrder: true,
+              variants: isAdmin ? true : {
+                where: { isActive: true },
+                select: {
+                  id: true,
+                  name: true,
+                  options: true,
+                }
+              }
+            },
             orderBy: { displayOrder: 'asc' },
           },
         },
