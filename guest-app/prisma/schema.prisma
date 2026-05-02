@@ -320,6 +320,7 @@ model Coupon {
   maxDiscount   Float?
   usageLimit    Int?
   usedCount     Int    @default(0)
+  usedBySessions String? // JSON array of sessionIds that have used this coupon
   isActive      Boolean @default(true)
   expiresAt     DateTime?
 

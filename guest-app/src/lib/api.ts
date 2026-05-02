@@ -134,8 +134,8 @@ export const api = {
     req(`/restaurants/${restaurantId}/tables/${tableId}/waiter-calls`, { method: 'POST', body: JSON.stringify(data) }),
   
   // Coupons
-  validateCoupon: (restaurantId: string, code: string, orderAmount: number) =>
-    req(`/restaurants/${restaurantId}/coupons/validate`, { method: 'POST', body: JSON.stringify({ code, orderAmount }) }),
+  validateCoupon: (restaurantId: string, code: string, orderAmount: number, sessionId?: string) =>
+    req(`/restaurants/${restaurantId}/coupons/validate`, { method: 'POST', body: JSON.stringify({ code, orderAmount, sessionId }) }),
   
   // Payment
   createRazorpayOrder: (orderId: string) =>

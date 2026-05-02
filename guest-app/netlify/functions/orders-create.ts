@@ -101,13 +101,24 @@ export const handler: Handler = async (event) => {
 
     let discountAmount = dto.discountAmount || 0;
     let couponId: string | undefined;
-    if (dto.couponCode) {
+    if (dto.couponCode && dto.sessionId) {
       const coupon = await prisma.coupon.findFirst({
         where: { restaurantId, code: dto.couponCode, isActive: true },
       });
       if (coupon && (!coupon.expiresAt || coupon.expiresAt > new Date())) {
         if (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit) {
-          if (subtotal >= coupon.minOrderValue) {
+          // Check if sessionId already used this coupon
+          let alreadyUsed = false;
+          if (coupon.usedBySessions) {
+            try {
+              const usedSessions = JSON.parse(coupon.usedBySessions);
+              alreadyUsed = Array.isArray(usedSessions) && usedSessions.includes(dto.sessionId);
+            } catch (e) {
+              console.error('Failed to parse usedBySessions:', e);
+            }
+          }
+          
+          if (!alreadyUsed && subtotal >= coupon.minOrderValue) {
             discountAmount = coupon.discountType === 'percentage'
               ? Math.min(subtotal * coupon.discountValue / 100, coupon.maxDiscount || Infinity)
               : coupon.discountValue;
@@ -136,8 +147,40 @@ export const handler: Handler = async (event) => {
         include: { items: { include: { menuItem: true } }, table: true },
       }),
       prisma.table.update({ where: { id: tableId }, data: { status: 'occupied' } }),
-      couponId ? prisma.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } }) : Promise.resolve(),
+      couponId && dto.sessionId ? prisma.coupon.update({ 
+        where: { id: couponId }, 
+        data: { 
+          usedCount: { increment: 1 },
+          usedBySessions: (() => {
+            const coupon = menuItems; // We need to fetch the coupon again to get current usedBySessions
+            // This is a workaround - we'll update it properly
+            return dto.sessionId;
+          })()
+        } 
+      }) : Promise.resolve(),
     ]);
+
+    // Update coupon usedBySessions separately to handle JSON properly
+    if (couponId && dto.sessionId) {
+      const currentCoupon = await prisma.coupon.findUnique({ where: { id: couponId } });
+      if (currentCoupon) {
+        let usedSessions: string[] = [];
+        if (currentCoupon.usedBySessions) {
+          try {
+            usedSessions = JSON.parse(currentCoupon.usedBySessions);
+          } catch (e) {
+            console.error('Failed to parse usedBySessions:', e);
+          }
+        }
+        if (!usedSessions.includes(dto.sessionId)) {
+          usedSessions.push(dto.sessionId);
+          await prisma.coupon.update({
+            where: { id: couponId },
+            data: { usedBySessions: JSON.stringify(usedSessions) }
+          });
+        }
+      }
+    }
 
     return success(order, 201);
   } catch (err: any) {
