@@ -32,12 +32,36 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMergeNotice, setShowMergeNotice] = useState(false);
+  const [existingOrders, setExistingOrders] = useState<any[]>([]);
+  const [loadingExisting, setLoadingExisting] = useState(true);
 
   const subtotal = getTotal();
   const tax = restaurant ? (subtotal * restaurant.taxPercentage) / 100 : 0;
   const serviceCharge = restaurant ? (subtotal * restaurant.serviceChargePercentage) / 100 : 0;
   const total = subtotal + tax + serviceCharge - couponDiscount;
   const currency = '₹';
+
+  // Calculate existing order total
+  const existingTotal = existingOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+  const grandTotal = total + existingTotal;
+
+  // Load existing orders on mount
+  useEffect(() => {
+    const loadExistingOrders = async () => {
+      if (!tableId) return;
+      setLoadingExisting(true);
+      try {
+        const orders: any = await api.getActiveOrders(tableId);
+        setExistingOrders(orders);
+      } catch (err) {
+        console.error('Failed to load existing orders:', err);
+        setExistingOrders([]);
+      } finally {
+        setLoadingExisting(false);
+      }
+    };
+    loadExistingOrders();
+  }, [tableId]);
 
   const applyCoupon = async () => {
     if (!couponCode.trim() || !restaurantId) return;
@@ -166,6 +190,53 @@ export default function CartPage() {
           ))}
         </div>
 
+        {/* Existing Orders Preview */}
+        {existingOrders.length > 0 && (
+          <div className="card p-5 shadow-sm shadow-blue-50 border-2 border-blue-100">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-blue-500 text-xl">ℹ️</span>
+              <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider">Existing Orders</h3>
+            </div>
+            <div className="space-y-3">
+              {existingOrders.map((order: any) => (
+                <div key={order.id} className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-blue-900">#{order.orderNumber?.slice(-10)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                      order.status === 'pending' ? 'bg-orange-100 text-orange-600' :
+                      order.status === 'confirmed' ? 'bg-blue-100 text-blue-600' :
+                      order.status === 'preparing' ? 'bg-purple-100 text-purple-600' :
+                      order.status === 'ready' ? 'bg-green-100 text-green-600' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <div className="space-y-1 mb-2">
+                    {order.items?.slice(0, 3).map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between text-xs">
+                        <span className="text-blue-700">×{item.quantity} {item.menuItem?.name}</span>
+                        <span className="text-blue-600 font-medium">{currency}{(item.price * item.quantity).toFixed(0)}</span>
+                      </div>
+                    ))}
+                    {order.items?.length > 3 && (
+                      <p className="text-xs text-blue-500">+{order.items.length - 3} more items</p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-blue-200">
+                    <span className="text-xs text-blue-600 font-semibold">Order Total</span>
+                    <span className="text-sm text-blue-700 font-black">{currency}{(order.totalAmount || 0).toFixed(0)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t-2 border-blue-200 flex items-center justify-between">
+              <span className="text-sm font-bold text-blue-900">Existing Orders Total</span>
+              <span className="text-lg font-black text-blue-600">{currency}{existingTotal.toFixed(0)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Coupon */}
         <Section title="Coupon Code">
           <div className="flex gap-2">
@@ -223,9 +294,21 @@ export default function CartPage() {
               </div>
             )}
             <div className="border-t-2 border-orange-200 pt-3 flex justify-between items-center">
-              <span className="font-bold text-stone-900 text-lg">Total Amount</span>
+              <span className="font-bold text-stone-900 text-lg">New Order Total</span>
               <span className="font-black text-orange-500 text-2xl">{currency}{total.toFixed(2)}</span>
             </div>
+            {existingOrders.length > 0 && (
+              <>
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-orange-100">
+                  <span className="text-blue-600 font-semibold text-sm">+ Existing Orders</span>
+                  <span className="text-blue-600 font-bold text-lg">{currency}{existingTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-orange-300 bg-orange-50 -mx-5 px-5 py-3 rounded-b-2xl">
+                  <span className="font-black text-stone-900 text-xl">Grand Total</span>
+                  <span className="font-black text-orange-600 text-3xl">{currency}{grandTotal.toFixed(2)}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -235,9 +318,23 @@ export default function CartPage() {
       {/* Place order */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-orange-100 p-4">
         <div className="max-w-2xl mx-auto space-y-2">
+          {existingOrders.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-xs text-blue-700 flex items-center gap-2">
+              <span>ℹ️</span>
+              <span>Your new items will be added to existing order</span>
+            </div>
+          )}
           <div className="flex items-center justify-between text-sm px-1">
-            <span className="text-stone-400">{cart.reduce((s, i) => s + i.quantity, 0)} items</span>
-            <span className="text-orange-500 font-black text-lg">{currency} {total.toFixed(0)}</span>
+            <span className="text-stone-400">{cart.reduce((s, i) => s + i.quantity, 0)} new items</span>
+            <div className="flex items-center gap-2">
+              {existingOrders.length > 0 && (
+                <>
+                  <span className="text-blue-500 font-semibold text-sm">+{currency}{existingTotal.toFixed(0)}</span>
+                  <span className="text-stone-300">=</span>
+                </>
+              )}
+              <span className="text-orange-500 font-black text-lg">{currency} {(existingOrders.length > 0 ? grandTotal : total).toFixed(0)}</span>
+            </div>
           </div>
           <button onClick={handlePayLater} disabled={loading}
             className="btn-primary w-full flex items-center justify-center gap-3 text-lg disabled:opacity-60 disabled:cursor-not-allowed">
