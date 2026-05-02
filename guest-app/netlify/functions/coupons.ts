@@ -28,7 +28,7 @@ export const handler: Handler = async (event) => {
     if (event.httpMethod === 'POST') {
       if (isValidate) {
         // POST /restaurants/:restaurantId/coupons/validate
-        const { code, orderAmount, sessionId } = JSON.parse(event.body || '{}');
+        const { code, orderAmount } = JSON.parse(event.body || '{}');
         if (!code || orderAmount === undefined) {
           return error('Code and orderAmount are required', 400);
         }
@@ -44,19 +44,6 @@ export const handler: Handler = async (event) => {
         if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
           return error('Coupon usage limit reached', 400);
         }
-        
-        // Check if this sessionId has already used this coupon
-        if (sessionId && coupon.usedBySessions) {
-          try {
-            const usedSessions = JSON.parse(coupon.usedBySessions);
-            if (Array.isArray(usedSessions) && usedSessions.includes(sessionId)) {
-              return error('You have already used this coupon', 400);
-            }
-          } catch (e) {
-            console.error('Failed to parse usedBySessions:', e);
-          }
-        }
-        
         if (orderAmount < coupon.minOrderValue) {
           return error(`Minimum order value is ${coupon.minOrderValue}`, 400);
         }

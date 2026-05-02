@@ -67,8 +67,7 @@ export default function CartPage() {
     if (!couponCode.trim() || !restaurantId) return;
     setCouponError('');
     try {
-      const sessionId = useCartStore.getState().sessionId;
-      const result: any = await api.validateCoupon(restaurantId, couponCode, subtotal, sessionId);
+      const result: any = await api.validateCoupon(restaurantId, couponCode, subtotal);
       setCouponDiscount(result.discountAmount || 0); 
       setCouponApplied(true);
     } catch (e: any) { 
@@ -91,7 +90,6 @@ export default function CartPage() {
     guestCount: 1,
     specialInstructions: instructions || undefined,
     couponCode: couponApplied ? couponCode : undefined,
-    sessionId: useCartStore.getState().sessionId,
   });
 
   const handlePayLater = async () => {
