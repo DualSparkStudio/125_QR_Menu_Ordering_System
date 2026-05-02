@@ -49,6 +49,151 @@ export default function OrdersPage() {
     try { await adminApi.updateOrderStatus(id, 'cancelled', token); await load(); } finally { setUpdating(null); }
   };
 
+  const printBill = (order: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const billHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Bill - ${order.orderNumber}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Courier New', monospace; 
+            padding: 20px; 
+            max-width: 400px; 
+            margin: 0 auto;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .header { text-align: center; margin-bottom: 20px; border-bottom: 2px dashed #000; padding-bottom: 15px; }
+          .header h1 { font-size: 24px; font-weight: bold; margin-bottom: 8px; }
+          .header p { font-size: 12px; margin: 2px 0; }
+          .order-info { text-align: center; margin: 15px 0; padding: 10px 0; border-bottom: 2px dashed #000; }
+          .order-info p { margin: 3px 0; }
+          .items { margin: 15px 0; }
+          .item { display: flex; justify-content: space-between; margin: 8px 0; }
+          .item-name { flex: 1; }
+          .item-qty { width: 40px; text-align: center; }
+          .item-price { width: 80px; text-align: right; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          .divider-thick { border-top: 2px solid #000; margin: 15px 0; }
+          .summary { margin: 15px 0; }
+          .summary-row { display: flex; justify-content: space-between; margin: 5px 0; }
+          .summary-row.total { font-weight: bold; font-size: 18px; margin-top: 10px; }
+          .payment-status { 
+            text-align: center; 
+            padding: 15px; 
+            border: 3px solid #000; 
+            margin: 20px 0; 
+            font-size: 18px; 
+            font-weight: bold;
+          }
+          .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 2px dashed #000; }
+          .footer p { margin: 5px 0; font-size: 13px; }
+          @media print {
+            body { padding: 10px; }
+            @page { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>${order.restaurant?.name || 'Restaurant'}</h1>
+          ${order.restaurant?.address ? `<p>${order.restaurant.address}</p>` : ''}
+          ${order.restaurant?.phone ? `<p>📞 ${order.restaurant.phone}</p>` : ''}
+          ${order.restaurant?.email ? `<p>✉️ ${order.restaurant.email}</p>` : ''}
+        </div>
+
+        <div class="order-info">
+          <p><strong>Order #${order.orderNumber}</strong></p>
+          <p>Table ${order.table?.tableNumber} · ${order.table?.section || 'Main'}</p>
+          <p>${new Date(order.createdAt).toLocaleString('en-IN', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit',
+            second: '2-digit'
+          })}</p>
+        </div>
+
+        <div class="divider-thick"></div>
+
+        <div class="items">
+          ${order.items?.map((item: any) => `
+            <div class="item">
+              <span class="item-name">${item.menuItem?.name || 'Item'}</span>
+              <span class="item-qty">×${item.quantity}</span>
+              <span class="item-price">₹${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="summary">
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span>₹${(order.subtotal || 0).toFixed(2)}</span>
+          </div>
+          ${(order.taxAmount || 0) > 0 ? `
+            <div class="summary-row">
+              <span>Tax (${order.restaurant?.taxPercentage || 0}%)</span>
+              <span>₹${(order.taxAmount || 0).toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${(order.serviceCharge || 0) > 0 ? `
+            <div class="summary-row">
+              <span>Service Charge (${order.restaurant?.serviceChargePercentage || 0}%)</span>
+              <span>₹${(order.serviceCharge || 0).toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${(order.discountAmount || 0) > 0 ? `
+            <div class="summary-row">
+              <span>Discount ${order.couponCode ? `(${order.couponCode})` : ''}</span>
+              <span>-₹${(order.discountAmount || 0).toFixed(2)}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="divider-thick"></div>
+
+        <div class="summary">
+          <div class="summary-row total">
+            <span>TOTAL</span>
+            <span>₹${(order.totalAmount || 0).toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div class="payment-status">
+          ${order.paymentStatus === 'completed' ? 'PAID' : 'UNPAID - Pay at Counter'}
+        </div>
+
+        <div class="divider-thick"></div>
+
+        <div class="footer">
+          <p>Thank you for dining with us!</p>
+          <p>Visit again soon</p>
+        </div>
+
+        <script>
+          window.onload = () => { 
+            window.print(); 
+            window.onafterprint = () => window.close(); 
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(billHTML);
+    printWindow.document.close();
+  };
+
   const activeCount = orders.filter((o) => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status)).length;
 
   return (
@@ -134,7 +279,11 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <p className="font-black text-gray-900 text-lg">₹{order.totalAmount?.toFixed(0)}</p>
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 flex-wrap justify-end">
+                        <button onClick={() => printBill(order)}
+                          className="btn-secondary text-xs px-3 py-2 flex items-center gap-1">
+                          🖨️ Bill
+                        </button>
                         {NEXT[order.status] && (
                           <button onClick={() => advance(order.id, order.status)} disabled={updating === order.id}
                             className="btn-primary text-xs px-3 py-2">
