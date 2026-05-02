@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
 
+// Move F component outside to prevent re-creation on every render
+const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div><label className="label">{label}</label>{children}</div>
+);
+
 export default function SettingsPage() {
   const { staff, token } = useAuthStore();
   const [restaurant, setRestaurant] = useState<any>(null);
@@ -25,10 +30,6 @@ export default function SettingsPage() {
     try { await adminApi.updateRestaurant(staff.restaurantId, form, token); setSaved(true); setTimeout(() => setSaved(false), 3000); }
     finally { setSaving(false); }
   };
-
-  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div><label className="label">{label}</label>{children}</div>
-  );
 
   if (!restaurant) return (
     <div className="p-6 max-w-2xl mx-auto space-y-4">
