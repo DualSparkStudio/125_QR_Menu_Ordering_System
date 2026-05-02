@@ -56,13 +56,62 @@ export default function OrdersPage() {
     let restaurantDetails = order.restaurant;
     try {
       restaurantDetails = await adminApi.getRestaurant(staff.restaurantId, token);
+      console.log('Fetched restaurant details:', restaurantDetails);
     } catch (err) {
       console.error('Failed to fetch restaurant details:', err);
       // Fall back to order.restaurant if fetch fails
+      console.log('Using fallback restaurant details:', restaurantDetails);
     }
+
+    // Ensure we have restaurant details before proceeding
+    if (!restaurantDetails) {
+      alert('Unable to fetch restaurant details. Please try again.');
+      return;
+    }
+
+    // Extract values to ensure they're properly evaluated
+    const restaurantName = restaurantDetails.name || 'Restaurant';
+    const restaurantAddress = restaurantDetails.address || '';
+    const restaurantPhone = restaurantDetails.phone || '';
+    const restaurantEmail = restaurantDetails.email || '';
+    const taxPercentage = restaurantDetails.taxPercentage || 0;
+    const serviceChargePercentage = restaurantDetails.serviceChargePercentage || 0;
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+
+    // Build items HTML
+    const itemsHTML = order.items?.map((item: any) => `
+      <div class="item">
+        <span class="item-name">${item.menuItem?.name || 'Item'}</span>
+        <span class="item-qty">×${item.quantity}</span>
+        <span class="item-price">₹${(item.price * item.quantity).toFixed(2)}</span>
+      </div>
+    `).join('') || '';
+
+    // Build tax row
+    const taxRow = (order.taxAmount || 0) > 0 ? `
+      <div class="summary-row">
+        <span>Tax (${taxPercentage}%)</span>
+        <span>₹${(order.taxAmount || 0).toFixed(2)}</span>
+      </div>
+    ` : '';
+
+    // Build service charge row
+    const serviceChargeRow = (order.serviceCharge || 0) > 0 ? `
+      <div class="summary-row">
+        <span>Service Charge (${serviceChargePercentage}%)</span>
+        <span>₹${(order.serviceCharge || 0).toFixed(2)}</span>
+      </div>
+    ` : '';
+
+    // Build discount row
+    const discountRow = (order.discountAmount || 0) > 0 ? `
+      <div class="summary-row">
+        <span>Discount ${order.couponCode ? `(${order.couponCode})` : ''}</span>
+        <span>-₹${(order.discountAmount || 0).toFixed(2)}</span>
+      </div>
+    ` : '';
 
     const billHTML = `
       <!DOCTYPE html>
@@ -113,10 +162,10 @@ export default function OrdersPage() {
       </head>
       <body>
         <div class="header">
-          <h1>${restaurantDetails?.name || 'Restaurant'}</h1>
-          ${restaurantDetails?.address ? `<p>${restaurantDetails.address}</p>` : ''}
-          ${restaurantDetails?.phone ? `<p>📞 ${restaurantDetails.phone}</p>` : ''}
-          ${restaurantDetails?.email ? `<p>✉️ ${restaurantDetails.email}</p>` : ''}
+          <h1>${restaurantName}</h1>
+          ${restaurantAddress ? `<p>${restaurantAddress}</p>` : ''}
+          ${restaurantPhone ? `<p>📞 ${restaurantPhone}</p>` : ''}
+          ${restaurantEmail ? `<p>✉️ ${restaurantEmail}</p>` : ''}
         </div>
 
         <div class="order-info">
@@ -135,13 +184,7 @@ export default function OrdersPage() {
         <div class="divider-thick"></div>
 
         <div class="items">
-          ${order.items?.map((item: any) => `
-            <div class="item">
-              <span class="item-name">${item.menuItem?.name || 'Item'}</span>
-              <span class="item-qty">×${item.quantity}</span>
-              <span class="item-price">₹${(item.price * item.quantity).toFixed(2)}</span>
-            </div>
-          `).join('')}
+          ${itemsHTML}
         </div>
 
         <div class="divider"></div>
@@ -151,24 +194,9 @@ export default function OrdersPage() {
             <span>Subtotal</span>
             <span>₹${(order.subtotal || 0).toFixed(2)}</span>
           </div>
-          ${(order.taxAmount || 0) > 0 ? `
-            <div class="summary-row">
-              <span>Tax (${restaurantDetails?.taxPercentage || 0}%)</span>
-              <span>₹${(order.taxAmount || 0).toFixed(2)}</span>
-            </div>
-          ` : ''}
-          ${(order.serviceCharge || 0) > 0 ? `
-            <div class="summary-row">
-              <span>Service Charge (${restaurantDetails?.serviceChargePercentage || 0}%)</span>
-              <span>₹${(order.serviceCharge || 0).toFixed(2)}</span>
-            </div>
-          ` : ''}
-          ${(order.discountAmount || 0) > 0 ? `
-            <div class="summary-row">
-              <span>Discount ${order.couponCode ? `(${order.couponCode})` : ''}</span>
-              <span>-₹${(order.discountAmount || 0).toFixed(2)}</span>
-            </div>
-          ` : ''}
+          ${taxRow}
+          ${serviceChargeRow}
+          ${discountRow}
         </div>
 
         <div class="divider-thick"></div>
