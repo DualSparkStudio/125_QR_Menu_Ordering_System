@@ -102,10 +102,6 @@ export function useRealtimeNotifications(config: NotificationConfig) {
       pushNotifications.showNotification('🔔 New Order!', {
         body: `Order #${order.orderNumber?.slice(-6)} - Table ${order.tableNumber || 'N/A'}`,
         data: { orderId: order.id, type: 'new_order' },
-        actions: [
-          { action: 'view', title: 'View Order' },
-          { action: 'dismiss', title: 'Dismiss' },
-        ],
       });
 
       // Play sound
