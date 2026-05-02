@@ -259,14 +259,14 @@ function OrderContent() {
             <h3 className="font-bold text-stone-400 text-xs uppercase tracking-wider">Bill</h3>
           </div>
           <div className="space-y-2.5">
-            <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">₹{order.subtotal?.toFixed(0)}</span></div>
-            {order.taxAmount > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Tax</span><span className="text-stone-900 font-medium">₹{order.taxAmount?.toFixed(0)}</span></div>}
-            {order.serviceCharge > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Service Charge</span><span className="text-stone-900 font-medium">₹{order.serviceCharge?.toFixed(0)}</span></div>}
-            {order.discountAmount > 0 && <div className="flex justify-between text-sm"><span className="text-green-600 font-semibold">Discount</span><span className="text-green-600 font-semibold">−₹{order.discountAmount?.toFixed(0)}</span></div>}
+            <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">₹{(order.subtotal || 0).toFixed(0)}</span></div>
+            {(order.taxAmount || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Tax</span><span className="text-stone-900 font-medium">₹{(order.taxAmount || 0).toFixed(0)}</span></div>}
+            {(order.serviceCharge || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-stone-500">Service Charge</span><span className="text-stone-900 font-medium">₹{(order.serviceCharge || 0).toFixed(0)}</span></div>}
+            {(order.discountAmount || 0) > 0 && <div className="flex justify-between text-sm"><span className="text-green-600 font-semibold">Discount</span><span className="text-green-600 font-semibold">−₹{(order.discountAmount || 0).toFixed(0)}</span></div>}
           </div>
           <div className="border-t border-orange-100 mt-3 pt-3 flex justify-between items-center">
             <span className="font-bold text-stone-900">Total</span>
-            <span className="font-black text-orange-500 text-2xl">₹{order.totalAmount?.toFixed(0)}</span>
+            <span className="font-black text-orange-500 text-2xl">₹{(order.totalAmount || 0).toFixed(0)}</span>
           </div>
           <div className="mt-3">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${isPaidOrder ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>

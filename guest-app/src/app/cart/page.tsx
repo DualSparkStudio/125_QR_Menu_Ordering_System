@@ -13,7 +13,7 @@ declare global { interface Window { Razorpay: any; } }
 export default function CartPage() {
   const router = useRouter();
   const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession } = useCartStore();
-  const { restaurant } = useRestaurantStore();
+  const { restaurant, table } = useRestaurantStore();
   const { setCurrentOrder } = useOrderStore();
 
   const [instructions, setInstructions] = useState('');
@@ -29,7 +29,7 @@ export default function CartPage() {
   const tax = restaurant ? (subtotal * restaurant.taxPercentage) / 100 : 0;
   const serviceCharge = restaurant ? (subtotal * restaurant.serviceChargePercentage) / 100 : 0;
   const total = subtotal + tax + serviceCharge - couponDiscount;
-  const currency = restaurant?.currency || 'INR';
+  const currency = '₹';
 
   const applyCoupon = async () => {
     if (!couponCode.trim() || !restaurantId) return;
@@ -89,7 +89,7 @@ export default function CartPage() {
         <div className="text-6xl mb-4">🛒</div>
         <h2 className="text-xl font-black text-stone-900 mb-2">Cart is empty</h2>
         <p className="text-stone-400 mb-6 text-sm">Add some delicious items from the menu</p>
-        <Link href="/menu" className="btn-primary block text-center">Browse Menu</Link>
+        <Link href={`/menu?table=${table?.qrCode || table?.tableNumber || ''}`} className="btn-primary block text-center">Browse Menu</Link>
       </div>
     </div>
   );
@@ -106,7 +106,7 @@ export default function CartPage() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-xl border-b border-orange-100 px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link href="/menu" className="w-9 h-9 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-center text-orange-500">
+          <Link href={`/menu?table=${table?.qrCode || table?.tableNumber || ''}`} className="w-9 h-9 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-center text-orange-500">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </Link>
           <h1 className="font-black text-stone-900 text-xl">Your Order</h1>
@@ -153,7 +153,7 @@ export default function CartPage() {
         {/* Coupon */}
         <Section title="Coupon Code">
           <div className="flex gap-2">
-            <input value={couponCode} onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponDiscount(0); setCouponApplied(false); setCouponError(''); }}
+            <input value={couponCode} onChange={(e) => { const val = e.target.value.toUpperCase(); setCouponCode(val); setCouponDiscount(0); setCouponApplied(false); setCouponError(''); }}
               placeholder="e.g. WELCOME20" className="input-field flex-1 font-mono tracking-widest" />
             <button onClick={applyCoupon} className="btn-secondary px-5 font-bold">Apply</button>
           </div>

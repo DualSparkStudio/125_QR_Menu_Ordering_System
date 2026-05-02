@@ -234,7 +234,7 @@ function MenuContent() {
           ) : (
             <div className="space-y-3">
               <p className="text-stone-400 text-sm">{searchResults.length} results</p>
-              {searchResults.map((item: any) => <ItemCard key={item.id} item={item} currency={restaurant.currency} onAdd={handleAdd} addedId={addedId} onTap={setSelectedItem} />)}
+              {searchResults.map((item: any) => <ItemCard key={item.id} item={item} currency="₹" onAdd={handleAdd} addedId={addedId} onTap={setSelectedItem} />)}
             </div>
           )
         ) : (
@@ -247,7 +247,7 @@ function MenuContent() {
                 <span className="text-stone-300 text-xs font-semibold">{cat.items.length}</span>
               </div>
               <div className="space-y-3">
-                {cat.items.map((item: any) => <ItemCard key={item.id} item={item} currency={restaurant.currency} onAdd={handleAdd} addedId={addedId} onTap={setSelectedItem} />)}
+                {cat.items.map((item: any) => <ItemCard key={item.id} item={item} currency="₹" onAdd={handleAdd} addedId={addedId} onTap={setSelectedItem} />)}
               </div>
             </div>
           ))
@@ -264,7 +264,7 @@ function MenuContent() {
                 <span className="text-white font-bold text-base">View Cart</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-white font-black text-lg">{restaurant.currency} {getTotal().toFixed(0)}</span>
+                <span className="text-white font-black text-lg">₹{getTotal().toFixed(0)}</span>
                 <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
               </div>
             </div>
@@ -286,7 +286,7 @@ function MenuContent() {
 
       {/* Item detail modal */}
       {selectedItem && (
-        <ItemModal item={selectedItem} currency={restaurant.currency} onClose={() => setSelectedItem(null)}
+        <ItemModal item={selectedItem} currency="₹" onClose={() => setSelectedItem(null)}
           onAdd={(item: any) => { handleAdd(item); setSelectedItem(null); }} addedId={addedId} />
       )}
 
@@ -363,7 +363,7 @@ function MenuContent() {
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="text-stone-400 text-xs">×{item.quantity}</p>
-                              <p className="text-orange-500 font-bold text-sm">{restaurant.currency} {(item.price * item.quantity).toFixed(0)}</p>
+                              <p className="text-orange-500 font-bold text-sm">₹{(item.price * item.quantity).toFixed(0)}</p>
                             </div>
                           </div>
                         ))}
@@ -372,7 +372,7 @@ function MenuContent() {
                       {/* Order total */}
                       <div className="border-t border-orange-100 pt-3 flex items-center justify-between">
                         <span className="text-stone-500 text-sm font-medium">Total Amount</span>
-                        <span className="text-orange-500 font-black text-xl">{restaurant.currency} {order.totalAmount?.toFixed(0)}</span>
+                        <span className="text-orange-500 font-black text-xl">₹{(order.totalAmount || 0).toFixed(0)}</span>
                       </div>
 
                       {/* Payment status */}
