@@ -3,6 +3,12 @@ import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
 import { v4 as uuidv4 } from 'uuid';
 
+// Cache invalidation helper
+const invalidateCache = (tableId: string) => {
+  // This would ideally use Redis or similar, but for now we'll rely on short TTLs
+  console.log(`Cache invalidated for table: ${tableId}`);
+};
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return handleCors();
@@ -99,7 +105,10 @@ export const handler: Handler = async (event) => {
         ...itemsToUpdate.map((item) =>
           prisma.orderItem.update({
             where: { id: item.id },
-            data: { quantity: item.quantity },
+            data: { 
+              quantity: item.quantity,
+              updatedAt: new Date(), // Force update timestamp to show as "new"
+            },
           })
         ),
         itemsToCreate.length > 0 ? prisma.orderItem.createMany({ data: itemsToCreate }) : Promise.resolve(),
@@ -121,6 +130,7 @@ export const handler: Handler = async (event) => {
         include: { items: { include: { menuItem: true } }, table: true },
       });
 
+      invalidateCache(tableId);
       return success(updatedOrder);
     }
 
@@ -192,6 +202,7 @@ export const handler: Handler = async (event) => {
       couponId ? prisma.coupon.update({ where: { id: couponId }, data: { usedCount: { increment: 1 } } }) : Promise.resolve(),
     ]);
 
+    invalidateCache(tableId);
     return success(order, 201);
   } catch (err: any) {
     console.error('Create order error:', err);

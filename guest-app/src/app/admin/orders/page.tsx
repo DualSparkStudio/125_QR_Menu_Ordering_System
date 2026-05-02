@@ -366,8 +366,8 @@ export default function OrdersPage() {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {order.items?.map((item: any) => {
-                          // Check if item was added in last 2 minutes
-                          const itemAge = Date.now() - new Date(item.createdAt).getTime();
+                          // Check if item was added/updated in last 2 minutes
+                          const itemAge = Date.now() - new Date(item.updatedAt || item.createdAt).getTime();
                           const isNew = itemAge < 120000; // 2 minutes
                           return (
                             <span key={item.id} className={`inline-flex items-center gap-1 ${isNew ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-600'} border text-xs px-2.5 py-1 rounded-lg font-medium`}>

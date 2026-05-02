@@ -18,6 +18,39 @@
 [[functions."*"]]
   included_files = ["netlify/functions/lib/**", "node_modules/.prisma/**", "node_modules/@prisma/client/**"]
 
+# Performance Headers - Aggressive Caching
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets aggressively
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache menu API for 5 minutes
+[[headers]]
+  for = "/api/restaurants/*/menu/categories"
+  [headers.values]
+    Cache-Control = "public, max-age=300, s-maxage=300, stale-while-revalidate=600"
+
+# Cache active orders for 5 seconds
+[[headers]]
+  for = "/api/tables/*/orders/active"
+  [headers.values]
+    Cache-Control = "public, max-age=5, s-maxage=5"
+
+# Cache admin orders for 3 seconds
+[[headers]]
+  for = "/api/restaurants/*/orders"
+  [headers.values]
+    Cache-Control = "private, max-age=3, s-maxage=3"
+
 [[redirects]]
   from = "/api/auth/staff/login"
   to = "/.netlify/functions/auth-staff-login"

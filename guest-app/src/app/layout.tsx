@@ -16,10 +16,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* DNS Prefetch & Preconnect for faster connections */}
+        <link rel="dns-prefetch" href="https://chnzfuszszkoaginjfwzi.supabase.co" />
+        <link rel="preconnect" href="https://chnzfuszszkoaginjfwzi.supabase.co" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* Preload critical resources */}
+        <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" as="style" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+        
+        {/* Async load non-critical scripts */}
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async defer></script>
       </head>
       <body className="min-h-screen bg-[#fff8f3]">{children}</body>
     </html>

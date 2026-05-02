@@ -3,6 +3,10 @@ import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
 import { getAuthUser } from './lib/auth';
 
+// In-memory cache with TTL
+const cache = new Map<string, { data: any; expires: number }>();
+const CACHE_TTL = 300000; // 5 minutes
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return handleCors();
@@ -14,7 +18,25 @@ export const handler: Handler = async (event) => {
 
   try {
     if (event.httpMethod === 'GET') {
-      // GET /restaurants/:restaurantId/menu/categories or /categories/admin
+      // Check cache first (only for non-admin)
+      if (!isAdmin) {
+        const cacheKey = `menu:${restaurantId}`;
+        const cached = cache.get(cacheKey);
+        if (cached && Date.now() < cached.expires) {
+          return {
+            statusCode: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Cache-Control': 'public, max-age=300, s-maxage=300',
+              'X-Cache': 'HIT',
+            },
+            body: JSON.stringify(cached.data),
+          };
+        }
+      }
+
+      // Optimized query - only essential fields
       const categories = await prisma.category.findMany({
         where: { 
           restaurantId, 
@@ -62,11 +84,29 @@ export const handler: Handler = async (event) => {
         },
         orderBy: { displayOrder: 'asc' },
       });
-      return success(categories);
+
+      // Cache for non-admin
+      if (!isAdmin) {
+        const cacheKey = `menu:${restaurantId}`;
+        cache.set(cacheKey, {
+          data: categories,
+          expires: Date.now() + CACHE_TTL,
+        });
+      }
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=300, s-maxage=300',
+          'X-Cache': 'MISS',
+        },
+        body: JSON.stringify(categories),
+      };
     }
 
     if (event.httpMethod === 'POST') {
-      // POST /restaurants/:restaurantId/menu/categories
       const user = getAuthUser(event);
       if (!user) return error('Unauthorized', 401);
 
@@ -83,6 +123,10 @@ export const handler: Handler = async (event) => {
       const category = await prisma.category.create({
         data: { name, description, displayOrder, image, restaurantId },
       });
+
+      // Invalidate cache
+      cache.delete(`menu:${restaurantId}`);
+
       return success(category, 201);
     }
 

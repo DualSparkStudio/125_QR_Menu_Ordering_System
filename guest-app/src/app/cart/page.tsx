@@ -346,12 +346,17 @@ export default function CartPage() {
               <span className="text-orange-500 font-black text-lg">{currency} {(existingOrders.length > 0 ? grandTotal : total).toFixed(0)}</span>
             </div>
           </div>
-          <button onClick={handlePayLater} disabled={loading}
+          <button onClick={handlePayLater} disabled={loading || loadingExisting}
             className="btn-primary w-full flex items-center justify-center gap-3 text-lg disabled:opacity-60 disabled:cursor-not-allowed">
             {loading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 <span>Placing order...</span>
+              </>
+            ) : loadingExisting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span>Loading orders...</span>
               </>
             ) : (
               <>
