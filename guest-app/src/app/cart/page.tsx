@@ -29,6 +29,7 @@ export default function CartPage() {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMergeNotice, setShowMergeNotice] = useState(false);
@@ -65,6 +66,7 @@ export default function CartPage() {
 
   const applyCoupon = async () => {
     if (!couponCode.trim() || !restaurantId || !tableId) return;
+    setValidatingCoupon(true);
     setCouponError('');
     try {
       const result: any = await api.validateCoupon(restaurantId, couponCode, subtotal, tableId);
@@ -74,6 +76,8 @@ export default function CartPage() {
       setCouponError(e.message); 
       setCouponDiscount(0); 
       setCouponApplied(false); 
+    } finally {
+      setValidatingCoupon(false);
     }
   };
 
@@ -97,38 +101,19 @@ export default function CartPage() {
     if (!tableId || !restaurantId) { setError('Session expired. Please scan QR again.'); return; }
     setLoading(true); setError('');
     try {
-      // Check for existing active orders before placing
-      const existingOrders: any = await api.getActiveOrders(tableId);
-      const hasActiveOrder = existingOrders.length > 0;
-      
       const order: any = await api.createOrder(restaurantId, tableId, createPayload());
       setCurrentOrder(order);
-      setActiveSession(true); // Mark that user has placed an order
+      setActiveSession(true);
       
-      // Navigate first, then clear cart to avoid showing empty state
+      // Clear cart immediately before navigation
+      clearCart();
+      
+      // Navigate to order page
       router.push(`/orders/${order.id}?new=1`);
-      
-      // Clear cart after navigation starts
-      setTimeout(() => {
-        clearCart();
-      }, 100);
-      
-      // Show merge notice if items were added to existing order
-      if (hasActiveOrder) {
-        // Show browser notification
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Items Added!', {
-            body: `Your items were added to existing order #${order.orderNumber}`,
-            icon: '/icon.png',
-          });
-        }
-        
-        // Vibrate
-        if ('vibrate' in navigator) {
-          navigator.vibrate([200, 100, 200]);
-        }
-      }
-    } catch (e: any) { setError(e.message); setLoading(false); }
+    } catch (e: any) { 
+      setError(e.message); 
+      setLoading(false); 
+    }
   };
 
   if (cart.length === 0) return (
@@ -192,7 +177,23 @@ export default function CartPage() {
         </div>
 
         {/* Existing Orders Preview */}
-        {existingOrders.length > 0 && (
+        {loadingExisting ? (
+          <div className="card p-5 shadow-sm shadow-blue-50 border-2 border-blue-100">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-blue-500 text-xl">ℹ️</span>
+              <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider">Loading existing orders...</h3>
+            </div>
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-blue-50 rounded-xl p-3 border border-blue-100 animate-pulse">
+                  <div className="h-4 bg-blue-200 rounded w-1/3 mb-2"></div>
+                  <div className="h-3 bg-blue-200 rounded w-2/3 mb-1"></div>
+                  <div className="h-3 bg-blue-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : existingOrders.length > 0 && (
           <div className="card p-5 shadow-sm shadow-blue-50 border-2 border-blue-100">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-blue-500 text-xl">ℹ️</span>
@@ -246,8 +247,11 @@ export default function CartPage() {
               onChange={handleCouponChange}
               placeholder="e.g. WELCOME20" 
               className="input-field flex-1 font-mono tracking-widest" 
+              disabled={validatingCoupon}
             />
-            <button onClick={applyCoupon} className="btn-secondary px-5 font-bold">Apply</button>
+            <button onClick={applyCoupon} disabled={validatingCoupon || !couponCode.trim()} className="btn-secondary px-5 font-bold disabled:opacity-50">
+              {validatingCoupon ? '...' : 'Apply'}
+            </button>
           </div>
           {couponError && <p className="text-red-500 text-xs mt-2">{couponError}</p>}
           {couponApplied && (

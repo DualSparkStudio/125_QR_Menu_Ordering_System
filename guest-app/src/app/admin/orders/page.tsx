@@ -57,7 +57,7 @@ export default function OrdersPage() {
     const shouldPoll = !filter || ['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(filter);
     if (!shouldPoll) return;
     
-    const t = setInterval(load, 10000); // Reduced from 20s to 10s for active orders only
+    const t = setInterval(load, 3000); // Reduced to 3s for real-time notifications
     return () => clearInterval(t); 
   }, [filter, staff, token]);
 
@@ -342,11 +342,17 @@ export default function OrdersPage() {
                         <span>· {new Date(order.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {order.items?.map((item: any) => (
-                          <span key={item.id} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-lg font-medium">
-                            <span className="text-gray-400">×{item.quantity}</span> {item.menuItem?.name}
-                          </span>
-                        ))}
+                        {order.items?.map((item: any) => {
+                          // Check if item was added in last 2 minutes
+                          const itemAge = Date.now() - new Date(item.createdAt).getTime();
+                          const isNew = itemAge < 120000; // 2 minutes
+                          return (
+                            <span key={item.id} className={`inline-flex items-center gap-1 ${isNew ? 'bg-green-50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-600'} border text-xs px-2.5 py-1 rounded-lg font-medium`}>
+                              {isNew && <span className="text-green-500 animate-pulse">🆕</span>}
+                              <span className="text-gray-400">×{item.quantity}</span> {item.menuItem?.name}
+                            </span>
+                          );
+                        })}
                       </div>
                       {order.specialInstructions && (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 mt-2">
