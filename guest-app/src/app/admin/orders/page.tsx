@@ -17,19 +17,38 @@ const FILTER_LABELS: Record<string, string> = {
 };
 
 export default function OrdersPage() {
-  const { staff, token } = useAuthStore();
+  const { staff, token, isAuthenticated } = useAuthStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  // Restore auth from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('admin-auth');
+      if (stored) {
+        const data = JSON.parse(stored);
+        useAuthStore.setState({ staff: data.staff, token: data.token });
+      }
+    }
+  }, []);
+
   const load = async () => {
-    if (!staff?.restaurantId || !token) return;
-    const data: any = await adminApi.getOrders(staff.restaurantId, token, filter ? { status: filter } : {});
-    setOrders(data);
-    setLastRefresh(new Date());
-    setLoading(false);
+    if (!staff?.restaurantId || !token) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const data: any = await adminApi.getOrders(staff.restaurantId, token, filter ? { status: filter } : {});
+      setOrders(data);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error('Failed to load orders:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [filter, staff, token]);
@@ -41,6 +60,13 @@ export default function OrdersPage() {
     const t = setInterval(load, 10000); // Reduced from 20s to 10s for active orders only
     return () => clearInterval(t); 
   }, [filter, staff, token]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !token) {
+      window.location.href = '/admin';
+    }
+  }, [token, loading]);
 
   const advance = async (id: string, status: string) => {
     const next = NEXT[status];
@@ -221,6 +247,30 @@ export default function OrdersPage() {
   };
 
   const activeCount = orders.filter((o) => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status)).length;
+
+  // Show loading while checking auth
+  if (loading && !token) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if not authenticated
+  if (!token || !staff) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Please log in to view orders</p>
+          <a href="/admin" className="btn-primary">Go to Login</a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
