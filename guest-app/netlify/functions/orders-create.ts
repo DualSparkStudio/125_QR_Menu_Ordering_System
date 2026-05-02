@@ -30,14 +30,16 @@ export const handler: Handler = async (event) => {
     if (!restaurant) return error('Restaurant not found', 404);
     if (!restaurant.isOpen) return error('Restaurant is currently closed', 400);
 
-    // Check for existing active order
-    const existingOrder = await prisma.order.findFirst({
+    // Check for existing active order for this device session
+    const deviceSessionId = dto.deviceSessionId;
+    const existingOrder = deviceSessionId ? await prisma.order.findFirst({
       where: {
         tableId,
+        deviceSessionId,
         status: { in: ['pending', 'confirmed', 'preparing', 'ready'] },
       },
       orderBy: { createdAt: 'desc' },
-    });
+    }) : null;
 
     if (existingOrder) {
       // Add items to existing order
@@ -132,6 +134,7 @@ export const handler: Handler = async (event) => {
     const order = await prisma.order.create({
       data: {
         restaurantId, tableId, orderNumber,
+        deviceSessionId, // Save device session ID
         guestName: dto.guestName, guestPhone: dto.guestPhone, guestCount: dto.guestCount || 1,
         specialInstructions: dto.specialInstructions,
         subtotal, taxAmount, serviceCharge, discountAmount, totalAmount,

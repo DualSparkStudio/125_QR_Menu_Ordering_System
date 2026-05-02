@@ -13,10 +13,21 @@ export const handler: Handler = async (event) => {
 
   const pathParts = event.path.split('/');
   const tableId = pathParts[pathParts.indexOf('tables') + 1];
+  const { deviceSessionId } = event.queryStringParameters || {};
 
   try {
+    const where: any = { 
+      tableId, 
+      status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] } 
+    };
+
+    // Filter by deviceSessionId if provided
+    if (deviceSessionId) {
+      where.deviceSessionId = deviceSessionId;
+    }
+
     const orders = await prisma.order.findMany({
-      where: { tableId, status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] } },
+      where,
       include: { 
         items: { include: { menuItem: true } },
         restaurant: {

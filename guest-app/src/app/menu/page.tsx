@@ -15,7 +15,7 @@ function MenuContent() {
   const code = searchParams.get('table');
 
   const { restaurant, table, categories, fetchByQR, fetchCategories, loading, error } = useRestaurantStore();
-  const { addToCart, getItemCount, getTotal, setContext, clearCart, hasActiveSession, clearSession } = useCartStore();
+  const { addToCart, getItemCount, getTotal, setContext, clearCart, hasActiveSession, clearSession, getDeviceSessionId } = useCartStore();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -57,7 +57,8 @@ function MenuContent() {
       if (hasRedirected) return;
       
       try {
-        const orders: any = await api.getActiveOrders(table.id);
+        const deviceSessionId = getDeviceSessionId();
+        const orders: any = await api.getActiveOrders(table.id, deviceSessionId);
         console.log('Checking payment status for active session, active orders:', orders.length);
         
         // If no active orders, it means all orders are completed and paid
@@ -112,7 +113,8 @@ function MenuContent() {
     console.log('Loading active orders for table:', table.id);
     setLoadingOrders(true);
     try {
-      const orders: any = await api.getActiveOrders(table.id);
+      const deviceSessionId = getDeviceSessionId();
+      const orders: any = await api.getActiveOrders(table.id, deviceSessionId);
       console.log('Active orders received:', orders);
       setActiveOrders(orders);
     } catch (err) {
