@@ -50,21 +50,30 @@ export default function OrdersPage() {
   };
 
   const printBill = async (order: any) => {
-    if (!staff?.restaurantId || !token) return;
+    if (!staff?.restaurantId || !token) {
+      console.error('Missing staff or token:', { staff, token });
+      return;
+    }
+
+    console.log('Starting printBill for order:', order.id);
+    console.log('Restaurant ID:', staff.restaurantId);
+    console.log('Order restaurant data:', order.restaurant);
 
     // Fetch latest restaurant details to ensure we have current info
     let restaurantDetails = order.restaurant;
     try {
+      console.log('Fetching restaurant details from API...');
       restaurantDetails = await adminApi.getRestaurant(staff.restaurantId, token);
-      console.log('Fetched restaurant details:', restaurantDetails);
+      console.log('✅ Fetched restaurant details:', restaurantDetails);
     } catch (err) {
-      console.error('Failed to fetch restaurant details:', err);
+      console.error('❌ Failed to fetch restaurant details:', err);
       // Fall back to order.restaurant if fetch fails
       console.log('Using fallback restaurant details:', restaurantDetails);
     }
 
     // Ensure we have restaurant details before proceeding
     if (!restaurantDetails) {
+      console.error('No restaurant details available!');
       alert('Unable to fetch restaurant details. Please try again.');
       return;
     }
@@ -77,8 +86,20 @@ export default function OrdersPage() {
     const taxPercentage = restaurantDetails.taxPercentage || 0;
     const serviceChargePercentage = restaurantDetails.serviceChargePercentage || 0;
 
+    console.log('Restaurant details for bill:', {
+      restaurantName,
+      restaurantAddress,
+      restaurantPhone,
+      restaurantEmail,
+      taxPercentage,
+      serviceChargePercentage
+    });
+
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      console.error('Failed to open print window');
+      return;
+    }
 
     // Build items HTML
     const itemsHTML = order.items?.map((item: any) => `
