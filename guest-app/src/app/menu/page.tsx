@@ -127,9 +127,10 @@ function MenuContent() {
 
   const handleAdd = (item: any, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    // OPTIMISTIC UPDATE - Update UI instantly
     addToCart({ id: item.id, name: item.name, basePrice: item.basePrice, image: item.image, isVegetarian: item.isVegetarian });
     setAddedId(item.id);
-    setTimeout(() => setAddedId(null), 1200);
+    setTimeout(() => setAddedId(null), 800); // Reduced from 1200ms
   };
 
   const loadActiveOrders = async () => {

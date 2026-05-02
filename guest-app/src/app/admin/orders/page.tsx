@@ -16,6 +16,16 @@ const FILTER_LABELS: Record<string, string> = {
   ready: 'Ready', served: 'Served', completed: 'Done', cancelled: 'Cancelled',
 };
 
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending', color: 'orange' },
+  { value: 'confirmed', label: 'Confirmed', color: 'blue' },
+  { value: 'preparing', label: 'Preparing', color: 'purple' },
+  { value: 'ready', label: 'Ready', color: 'green' },
+  { value: 'served', label: 'Served', color: 'teal' },
+  { value: 'completed', label: 'Completed', color: 'gray' },
+  { value: 'cancelled', label: 'Cancelled', color: 'red' },
+];
+
 export default function OrdersPage() {
   const { staff, token, isAuthenticated } = useAuthStore();
   const [orders, setOrders] = useState<any[]>([]);
@@ -68,23 +78,36 @@ export default function OrdersPage() {
     }
   }, [token, loading]);
 
-  const advance = async (id: string, status: string) => {
-    const next = NEXT[status];
-    if (!next || !token) return;
-    setUpdating(id);
-    try { await adminApi.updateOrderStatus(id, next, token); await load(); } finally { setUpdating(null); }
-  };
-
-  const cancel = async (id: string) => {
-    if (!token || !confirm('Cancel this order?')) return;
-    setUpdating(id);
-    try { await adminApi.updateOrderStatus(id, 'cancelled', token); await load(); } finally { setUpdating(null); }
+  // OPTIMISTIC UPDATE - Update UI instantly, sync in background
+  const changeStatus = async (orderId: string, newStatus: string) => {
+    if (!token) return;
+    
+    // Update UI immediately
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    
+    // Sync with server in background
+    try {
+      await adminApi.updateOrderStatus(orderId, newStatus, token);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      // Revert on error
+      load();
+    }
   };
 
   const markPaid = async (id: string) => {
     if (!token) return;
-    setUpdating(id);
-    try { await adminApi.markAsPaid(id, token); await load(); } finally { setUpdating(null); }
+    
+    // Optimistic update
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, paymentStatus: 'completed' } : o));
+    
+    // Sync in background
+    try {
+      await adminApi.markAsPaid(id, token);
+    } catch (err) {
+      console.error('Failed to mark paid:', err);
+      load();
+    }
   };
 
   const printBill = (order: any) => {
@@ -373,16 +396,24 @@ export default function OrdersPage() {
                             {updating === order.id ? '...' : '💰 Mark Paid'}
                           </button>
                         )}
-                        {NEXT[order.status] && (
-                          <button onClick={() => advance(order.id, order.status)} disabled={updating === order.id}
-                            className="btn-primary text-xs px-3 py-2">
-                            {updating === order.id ? '...' : NEXT_LABEL[order.status]}
-                          </button>
-                        )}
-                        {order.status === 'pending' && (
-                          <button onClick={() => cancel(order.id)} disabled={updating === order.id}
-                            className="btn-danger text-xs px-3 py-2">✕</button>
-                        )}
+                        {/* Status Dropdown */}
+                        <select
+                          value={order.status}
+                          onChange={(e) => changeStatus(order.id, e.target.value)}
+                          className="text-xs px-3 py-2 rounded-lg border-2 border-gray-200 bg-white font-semibold cursor-pointer hover:border-orange-300 focus:outline-none focus:border-orange-500 transition-all"
+                          style={{
+                            color: order.status === 'pending' ? '#f97316' :
+                                   order.status === 'confirmed' ? '#3b82f6' :
+                                   order.status === 'preparing' ? '#a855f7' :
+                                   order.status === 'ready' ? '#22c55e' :
+                                   order.status === 'served' ? '#14b8a6' :
+                                   order.status === 'completed' ? '#6b7280' : '#ef4444'
+                          }}
+                        >
+                          {STATUS_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>

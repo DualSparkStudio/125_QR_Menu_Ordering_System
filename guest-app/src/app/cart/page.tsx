@@ -64,6 +64,11 @@ export default function CartPage() {
     loadExistingOrders();
   }, [tableId]);
 
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    // OPTIMISTIC UPDATE - Update UI instantly
+    updateQuantity(itemId, newQuantity);
+  };
+
   const applyCoupon = async () => {
     if (!couponCode.trim() || !restaurantId || !tableId) return;
     setValidatingCoupon(true);
@@ -105,11 +110,11 @@ export default function CartPage() {
       setCurrentOrder(order);
       setActiveSession(true);
       
-      // Clear cart immediately before navigation
-      clearCart();
-      
-      // Navigate to order page
+      // Navigate first, then clear cart to avoid flash
       router.push(`/orders/${order.id}?new=1`);
+      
+      // Clear cart after a tiny delay to ensure navigation started
+      setTimeout(() => clearCart(), 100);
     } catch (e: any) { 
       setError(e.message); 
       setLoading(false); 
@@ -168,9 +173,9 @@ export default function CartPage() {
                 <span className="text-orange-500 font-bold text-sm">{currency} {(item.basePrice * item.quantity).toFixed(0)}</span>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="qty-btn bg-orange-50 text-orange-500 border border-orange-200 hover:bg-orange-100">−</button>
+                <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="qty-btn bg-orange-50 text-orange-500 border border-orange-200 hover:bg-orange-100">−</button>
                 <span className="w-6 text-center font-black text-stone-900 text-sm">{item.quantity}</span>
-                <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="qty-btn bg-orange-500 text-white hover:bg-orange-600">+</button>
+                <button onClick={() => handleQuantityChange(item.id, item.quantity + 1)} className="qty-btn bg-orange-500 text-white hover:bg-orange-600">+</button>
               </div>
             </div>
           ))}
