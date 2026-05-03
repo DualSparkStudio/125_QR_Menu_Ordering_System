@@ -1,7 +1,7 @@
 // Background worker to listen for database notifications and send push notifications
-// This runs as a scheduled function every minute to process pending notifications
+// This is triggered by Supabase webhooks
 
-import { Handler, schedule } from '@netlify/functions';
+import { Handler } from '@netlify/functions';
 import { PrismaClient } from '@prisma/client';
 import webpush from 'web-push';
 
