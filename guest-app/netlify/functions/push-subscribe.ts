@@ -12,35 +12,40 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { subscription, userType, userId } = JSON.parse(event.body || '{}');
+    const { subscription, userType, userId, restaurantId, tableId } = JSON.parse(event.body || '{}');
 
     if (!subscription || !userType || !userId) {
       return error('Missing required fields', 400);
     }
 
-    // Store subscription in database
-    // Note: You'll need to add a PushSubscription table to your schema
-    // For now, we'll just log it
-    console.log('Push subscription received:', {
-      userType,
-      userId,
-      endpoint: subscription.endpoint,
-    });
+    if (userType === 'admin' && !restaurantId) {
+      return error('restaurantId required for admin subscriptions', 400);
+    }
 
-    // TODO: Store in database
-    // await prisma.pushSubscription.upsert({
-    //   where: { userId_userType: { userId, userType } },
-    //   create: {
-    //     userId,
-    //     userType,
-    //     endpoint: subscription.endpoint,
-    //     keys: JSON.stringify(subscription.keys),
-    //   },
-    //   update: {
-    //     endpoint: subscription.endpoint,
-    //     keys: JSON.stringify(subscription.keys),
-    //   },
-    // });
+    if (userType === 'guest' && !tableId) {
+      return error('tableId required for guest subscriptions', 400);
+    }
+
+    // Store subscription in database (upsert by endpoint)
+    await prisma.pushSubscription.upsert({
+      where: { endpoint: subscription.endpoint },
+      create: {
+        userId,
+        userType,
+        restaurantId: userType === 'admin' ? restaurantId : null,
+        tableId: userType === 'guest' ? tableId : null,
+        endpoint: subscription.endpoint,
+        keys: JSON.stringify(subscription.keys),
+        isActive: true,
+      },
+      update: {
+        userId,
+        restaurantId: userType === 'admin' ? restaurantId : null,
+        tableId: userType === 'guest' ? tableId : null,
+        keys: JSON.stringify(subscription.keys),
+        isActive: true,
+      },
+    });
 
     return success({ message: 'Subscription saved' });
   } catch (err: any) {

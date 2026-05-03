@@ -79,13 +79,34 @@ export class PushNotificationService {
   // Send subscription to server
   private async sendSubscriptionToServer(subscription: PushSubscription): Promise<void> {
     try {
+      const userType = this.getUserType();
+      const userId = this.getUserId();
+      
+      // Get restaurantId for admin or tableId for guest
+      let restaurantId, tableId;
+      if (userType === 'admin') {
+        const stored = localStorage.getItem('admin-auth');
+        if (stored) {
+          const data = JSON.parse(stored);
+          restaurantId = data.staff?.restaurantId;
+        }
+      } else {
+        const cartStore = localStorage.getItem('cart-storage');
+        if (cartStore) {
+          const data = JSON.parse(cartStore);
+          tableId = data.state?.tableId;
+        }
+      }
+      
       await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subscription,
-          userType: this.getUserType(),
-          userId: this.getUserId(),
+          userType,
+          userId,
+          restaurantId,
+          tableId,
         }),
       });
     } catch (error) {

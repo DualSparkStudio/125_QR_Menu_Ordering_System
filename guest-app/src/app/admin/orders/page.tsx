@@ -365,9 +365,14 @@ export default function OrdersPage() {
           <div className="space-y-3">
             {orders.map((order) => {
               const age = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
-              const isUrgent = age > 20 && ['pending', 'confirmed', 'preparing'].includes(order.status);
+              const isOverdue = age > 20 && !['served', 'completed', 'cancelled'].includes(order.status);
+              const isNew = order.status === 'pending';
               return (
-                <div key={order.id} className={`card overflow-hidden ${isUrgent ? 'border-red-200' : ''}`}>
+                <div key={order.id} className={`card overflow-hidden transition-all ${
+                  isOverdue ? 'bg-red-50 border-2 border-red-300' : 
+                  isNew ? 'bg-green-50 border-2 border-green-300' : 
+                  ''
+                }`}>
                   <div className="flex items-start gap-4 p-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -378,7 +383,7 @@ export default function OrdersPage() {
                             {order.paymentStatus === 'completed' ? '✓ Paid' : 'Unpaid'}
                           </span>
                         )}
-                        {isUrgent && <span className="badge bg-red-50 text-red-600 border border-red-200">⚠ {age}m</span>}
+                        {isOverdue && <span className="badge bg-red-100 text-red-700 border-2 border-red-400 font-bold animate-pulse">⚠ {age}m</span>}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-400 mb-2 flex-wrap">
                         <span>Table {order.table?.tableNumber}</span>

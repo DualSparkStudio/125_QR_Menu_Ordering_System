@@ -4,7 +4,7 @@ import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
 
 // Configure web-push with VAPID keys
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@cafeqrsystem.com';
 
@@ -26,41 +26,82 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { userType, userId, title, body, data } = JSON.parse(event.body || '{}');
+    const { restaurantId, tableId, userType, title, body, data } = JSON.parse(event.body || '{}');
 
-    if (!userType || !userId || !title) {
-      return error('Missing required fields', 400);
+    if (!title) {
+      return error('Missing title', 400);
     }
 
-    // TODO: Fetch subscriptions from database
-    // const subscriptions = await prisma.pushSubscription.findMany({
-    //   where: { userId, userType },
-    // });
+    // Fetch subscriptions based on target
+    let subscriptions;
+    if (userType === 'admin' && restaurantId) {
+      subscriptions = await prisma.pushSubscription.findMany({
+        where: { 
+          restaurantId,
+          userType: 'admin',
+          isActive: true,
+        },
+      });
+    } else if (userType === 'guest' && tableId) {
+      subscriptions = await prisma.pushSubscription.findMany({
+        where: { 
+          tableId,
+          userType: 'guest',
+          isActive: true,
+        },
+      });
+    } else {
+      return error('Invalid target', 400);
+    }
 
-    // For now, return success
-    console.log('Push notification request:', { userType, userId, title, body });
+    if (!subscriptions || subscriptions.length === 0) {
+      return success({ message: 'No active subscriptions', sent: 0 });
+    }
 
-    // TODO: Send push notifications
-    // const promises = subscriptions.map(sub => {
-    //   const pushSubscription = {
-    //     endpoint: sub.endpoint,
-    //     keys: JSON.parse(sub.keys),
-    //   };
-    //   
-    //   const payload = JSON.stringify({
-    //     title,
-    //     body,
-    //     icon: '/icon-192x192.png',
-    //     badge: '/icon-96x96.png',
-    //     data,
-    //   });
-    //   
-    //   return webpush.sendNotification(pushSubscription, payload);
-    // });
-    // 
-    // await Promise.all(promises);
+    // Send push notifications
+    const payload = JSON.stringify({
+      title,
+      body,
+      icon: '/icon-192x192.png',
+      badge: '/icon-96x96.png',
+      data,
+    });
 
-    return success({ message: 'Notifications sent' });
+    const results = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          const pushSubscription = {
+            endpoint: sub.endpoint,
+            keys: JSON.parse(sub.keys),
+          };
+          
+          await webpush.sendNotification(pushSubscription, payload);
+          return { success: true, id: sub.id };
+        } catch (err: any) {
+          console.error('Failed to send to subscription:', sub.id, err);
+          
+          // If subscription is invalid, mark as inactive
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            await prisma.pushSubscription.update({
+              where: { id: sub.id },
+              data: { isActive: false },
+            });
+          }
+          
+          return { success: false, id: sub.id, error: err.message };
+        }
+      })
+    );
+
+    const sent = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+    const failed = results.length - sent;
+
+    return success({ 
+      message: 'Push notifications sent',
+      sent,
+      failed,
+      total: subscriptions.length,
+    });
   } catch (err: any) {
     console.error('Push send error:', err);
     return error(err.message || 'Failed to send notifications', 500);

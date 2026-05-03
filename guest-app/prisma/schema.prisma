@@ -424,3 +424,25 @@ model AuditLog {
   @@index([userId])
   @@index([createdAt])
 }
+
+// ============ PUSH SUBSCRIPTIONS ============
+model PushSubscription {
+  id           String @id @default(cuid())
+  
+  userId       String  // staffId or sessionId
+  userType     String  // admin or guest
+  restaurantId String? // for admin subscriptions
+  tableId      String? // for guest subscriptions
+  
+  endpoint     String  @unique
+  keys         String  // JSON: { p256dh, auth }
+  
+  isActive     Boolean @default(true)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([userId, userType])
+  @@index([restaurantId])
+  @@index([tableId])
+}
