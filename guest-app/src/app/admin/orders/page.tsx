@@ -368,11 +368,17 @@ export default function OrdersPage() {
               const isOverdue = age > 20 && !['served', 'completed', 'cancelled'].includes(order.status);
               const isNew = order.status === 'pending';
               return (
-                <div key={order.id} className={`card overflow-hidden transition-all ${
-                  isOverdue ? 'bg-red-50 border-2 border-red-300' : 
-                  isNew ? 'bg-green-50 border-2 border-green-300' : 
-                  ''
-                }`}>
+                <div 
+                  key={order.id} 
+                  className={`card overflow-hidden transition-all ${
+                    isOverdue ? 'border-2 border-red-300' : 
+                    isNew ? 'border-2 border-green-300' : 
+                    ''
+                  }`}
+                  style={{
+                    backgroundColor: isOverdue ? '#fef2f2' : isNew ? '#f0fdf4' : 'var(--surface)'
+                  }}
+                >
                   <div className="flex items-start gap-4 p-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
