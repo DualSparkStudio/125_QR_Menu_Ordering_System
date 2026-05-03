@@ -34,6 +34,7 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(new Set());
 
   // Restore auth from localStorage on mount
   useEffect(() => {
@@ -90,7 +91,12 @@ export default function OrdersPage() {
     },
     onOrderUpdate: (order) => {
       console.log('Order updated:', order);
-      // Update order in list optimistically
+      // Ignore realtime updates for orders we just changed (prevents bounce)
+      if (recentlyUpdated.has(order.id)) {
+        console.log('Ignoring realtime update for recently changed order:', order.id);
+        return;
+      }
+      // Update order in list from realtime
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...order } : o));
     },
     onNewItem: (item) => {
@@ -104,15 +110,31 @@ export default function OrdersPage() {
   const changeStatus = async (orderId: string, newStatus: string) => {
     if (!token) return;
     
+    // Mark as recently updated to ignore realtime bounce
+    setRecentlyUpdated(prev => new Set(prev).add(orderId));
+    
     // Update UI immediately
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     
     // Sync with server in background
     try {
       await adminApi.updateOrderStatus(orderId, newStatus, token);
+      // Clear the flag after 3 seconds
+      setTimeout(() => {
+        setRecentlyUpdated(prev => {
+          const next = new Set(prev);
+          next.delete(orderId);
+          return next;
+        });
+      }, 3000);
     } catch (err) {
       console.error('Failed to update status:', err);
-      // Revert on error
+      // Revert on error and clear flag
+      setRecentlyUpdated(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
       load();
     }
   };
