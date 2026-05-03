@@ -371,12 +371,12 @@ export default function OrdersPage() {
                 <div 
                   key={order.id} 
                   className={`card overflow-hidden transition-all ${
-                    isOverdue ? 'border-2 border-red-300' : 
-                    isNew ? 'border-2 border-green-300' : 
+                    isOverdue ? 'border-2 border-red-400' : 
+                    isNew ? 'border-2 border-green-400' : 
                     ''
                   }`}
                   style={{
-                    backgroundColor: isOverdue ? '#fef2f2' : isNew ? '#f0fdf4' : 'var(--surface)'
+                    backgroundColor: isOverdue ? '#fee2e2' : isNew ? '#dcfce7' : 'var(--surface)'
                   }}
                 >
                   <div className="flex items-start gap-4 p-4">
