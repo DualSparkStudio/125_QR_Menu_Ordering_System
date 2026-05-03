@@ -29,6 +29,10 @@ export class PushNotificationService {
       this.registration = await navigator.serviceWorker.register('/sw.js');
       console.log('Service Worker registered');
 
+      // Wait for service worker to be ready (active)
+      await navigator.serviceWorker.ready;
+      console.log('Service Worker ready');
+
       // Request notification permission
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
