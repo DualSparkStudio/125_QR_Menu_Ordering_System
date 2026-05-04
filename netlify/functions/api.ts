@@ -146,13 +146,32 @@ export const handler: Handler = async (event) => {
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
       const rid = p.restaurantId;
-      const [totalOrders, revenue, activeOrders, todayOrders] = await Promise.all([
-        prisma.order.count({ where: { restaurantId: rid } }),
-        prisma.order.aggregate({ where: { restaurantId: rid, status: 'completed' }, _sum: { totalAmount: true } }),
-        prisma.order.count({ where: { restaurantId: rid, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } }),
-        prisma.order.count({ where: { restaurantId: rid, createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } }),
+      const today = new Date(new Date().setHours(0, 0, 0, 0));
+      const db = getPrisma();
+      const [
+        totalTables, occupiedTables, availableTables,
+        todayOrders, pendingOrders,
+        todayRevenue, totalRevenue,
+        pendingWaiterCalls,
+        reviewStats,
+      ] = await Promise.all([
+        db.table.count({ where: { restaurantId: rid, isActive: true } }),
+        db.table.count({ where: { restaurantId: rid, status: 'occupied' } }),
+        db.table.count({ where: { restaurantId: rid, status: 'available' } }),
+        db.order.count({ where: { restaurantId: rid, createdAt: { gte: today } } }),
+        db.order.count({ where: { restaurantId: rid, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } }),
+        db.order.aggregate({ where: { restaurantId: rid, status: 'completed', createdAt: { gte: today } }, _sum: { totalAmount: true } }),
+        db.order.aggregate({ where: { restaurantId: rid, status: 'completed' }, _sum: { totalAmount: true } }),
+        db.waiterCall.count({ where: { restaurantId: rid, status: 'pending' } }),
+        db.review.aggregate({ where: { restaurantId: rid }, _avg: { foodRating: true, serviceRating: true } }),
       ]);
-      return json(200, { totalOrders, totalRevenue: revenue._sum.totalAmount || 0, activeOrders, todayOrders });
+      return json(200, {
+        tables: { total: totalTables, occupied: occupiedTables, available: availableTables },
+        orders: { today: todayOrders, pending: pendingOrders },
+        revenue: { today: todayRevenue._sum.totalAmount || 0, total: totalRevenue._sum.totalAmount || 0 },
+        waiterCalls: { pending: pendingWaiterCalls },
+        ratings: { food: reviewStats._avg.foodRating || 0, service: reviewStats._avg.serviceRating || 0 },
+      });
     }
 
     // ── TABLES ────────────────────────────────────────────────────────────
