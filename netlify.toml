@@ -1,8 +1,13 @@
 [build]
-  # Build the guest-app (main application)
-  base = "guest-app"
+  # Build the admin-dashboard
+  base = "admin-dashboard"
   command = "npm install && npm run build"
   publish = ".next"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["@prisma/client", ".prisma/client"]
 
 # Next.js specific settings
 [[plugins]]
@@ -11,3 +16,9 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "9"
+
+# Redirect all /api/* requests to the serverless function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
