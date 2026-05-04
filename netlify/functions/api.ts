@@ -69,7 +69,12 @@ export const handler: Handler = async (event) => {
     return json(500, { message: 'JWT_SECRET is not configured. Set it in Netlify environment variables.' });
   }
 
-  const rawPath = event.path.replace('/.netlify/functions/api', '') || '/';
+  // Netlify passes the original path (e.g. /api/auth/staff/login) not the function path
+  const rawPath = (event.path || '/')
+    .replace('/.netlify/functions/api', '')
+    .replace(/^\/api/, '') || '/';
+
+  console.log(`[api] ${event.httpMethod} ${event.path} → rawPath: ${rawPath}`);
   const method = event.httpMethod;
   const body = parseBody(event);
   const tokenStr = getToken(event);
