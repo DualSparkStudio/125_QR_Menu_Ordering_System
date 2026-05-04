@@ -267,6 +267,11 @@ export const handler: Handler = async (event) => {
       const where: any = { restaurantId: p.restaurantId };
       if (q.status) where.status = q.status;
       if (q.tableId) where.tableId = q.tableId;
+      console.log(`[orders] fetching for restaurantId: ${p.restaurantId}, filter:`, where);
+      const db = getPrisma();
+      const totalCount = await db.order.count({});
+      const matchCount = await db.order.count({ where: { restaurantId: p.restaurantId } });
+      console.log(`[orders] total orders in DB: ${totalCount}, matching restaurantId: ${matchCount}`);
       const orders = await getPrisma().order.findMany({
         where,
         include: {
