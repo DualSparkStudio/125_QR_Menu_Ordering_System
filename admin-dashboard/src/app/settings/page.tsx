@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [errors, setErrors] = useState<any>({});
+  const [billImage, setBillImage] = useState<string>('');
+  const [billImageLabel, setBillImageLabel] = useState<string>('Scan to Pay');
 
   useEffect(() => {
     if (!staff?.restaurantId || !token) return;
@@ -19,7 +21,39 @@ export default function SettingsPage() {
       setRestaurant(data);
       setForm({ name: data.name, description: data.description || '', phone: data.phone, email: data.email, address: data.address, taxPercentage: data.taxPercentage, serviceChargePercentage: data.serviceChargePercentage, isOpen: data.isOpen });
     });
+    // Load bill image from localStorage
+    const savedImage = localStorage.getItem(`billImage_${staff.restaurantId}`);
+    const savedLabel = localStorage.getItem(`billImageLabel_${staff.restaurantId}`);
+    if (savedImage) setBillImage(savedImage);
+    if (savedLabel) setBillImageLabel(savedLabel);
   }, [staff, token]);
+
+  const handleBillImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) {
+      alert('Image must be under 500KB for thermal printing');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target?.result as string;
+      setBillImage(base64);
+      localStorage.setItem(`billImage_${staff?.restaurantId}`, base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const saveBillImageLabel = () => {
+    localStorage.setItem(`billImageLabel_${staff?.restaurantId}`, billImageLabel);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const removeBillImage = () => {
+    setBillImage('');
+    localStorage.removeItem(`billImage_${staff?.restaurantId}`);
+  };
 
   const validateForm = () => {
     const newErrors: any = {};
@@ -159,6 +193,42 @@ export default function SettingsPage() {
               <div className={`w-2 h-2 rounded-full ${form.isOpen ? 'bg-green-500 live-dot' : 'bg-gray-300'}`} />
               {form.isOpen ? 'Restaurant is Open' : 'Restaurant is Closed'}
             </div>
+          </div>
+
+          {/* Bill Payment Image */}
+          <div className="card p-5">
+            <h2 className="font-bold text-gray-700 text-sm mb-1 uppercase tracking-wider">Bill Payment Image</h2>
+            <p className="text-xs text-gray-400 mb-4">Upload a QR code or payment image to print at the bottom of every bill (max 500KB)</p>
+            
+            {billImage ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-4">
+                  <img src={billImage} alt="Bill payment" className="w-24 h-24 object-contain border border-gray-200 rounded-xl bg-gray-50" />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="label">Image Label</label>
+                      <input
+                        value={billImageLabel}
+                        onChange={(e) => setBillImageLabel(e.target.value)}
+                        placeholder="e.g. Scan to Pay, UPI Payment"
+                        className="input"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={saveBillImageLabel} className="btn-primary text-xs px-4 py-2">Save Label</button>
+                      <button onClick={removeBillImage} className="btn-danger text-xs px-4 py-2">Remove Image</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-all">
+                <span className="text-3xl mb-2">📷</span>
+                <span className="text-sm font-semibold text-gray-500">Click to upload payment QR</span>
+                <span className="text-xs text-gray-400 mt-1">PNG, JPG up to 500KB</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleBillImageUpload} />
+              </label>
+            )}
           </div>
 
           {errors.general && (
