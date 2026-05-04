@@ -2,7 +2,7 @@
   "name": "netlify-functions",
   "version": "1.0.0",
   "scripts": {
-    "seed": "ts-node seed.ts"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@netlify/functions": "^2.0.0",
