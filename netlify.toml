@@ -1,12 +1,18 @@
 [build]
   base = "admin-dashboard"
-  command = "npm install && npm run build"
+  command = "cd ../netlify/functions && npm install && cd ../../admin-dashboard && npm install && npm run build"
   publish = ".next"
 
 [functions]
   directory = "../netlify/functions"
   node_bundler = "esbuild"
-  external_node_modules = ["@prisma/client", ".prisma/client"]
+  external_node_modules = [
+    "@prisma/client",
+    ".prisma/client",
+    "bcryptjs",
+    "jsonwebtoken",
+    "uuid"
+  ]
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
