@@ -1,6 +1,6 @@
 [build]
   base = "admin-dashboard"
-  command = "cd ../netlify/functions && npm install && npx prisma generate && cd ../admin-dashboard && npm install && npm run build"
+  command = "cd /opt/build/repo/netlify/functions && npm install && npx prisma generate && cd /opt/build/repo/admin-dashboard && npm install && npm run build"
   publish = ".next"
 
 [functions]
