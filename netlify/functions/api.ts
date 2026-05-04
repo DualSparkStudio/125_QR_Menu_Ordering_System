@@ -4,7 +4,17 @@ import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
-const prisma = new PrismaClient();
+let prisma: PrismaClient;
+
+const getPrisma = () => {
+  if (!prisma) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
+    prisma = new PrismaClient();
+  }
+  return prisma;
+};
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
 const json = (statusCode: number, body: any) => ({
@@ -51,6 +61,14 @@ const matchPath = (pattern: string, path: string): Record<string, string> | null
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json(200, {});
 
+  // Early check for required env vars
+  if (!process.env.DATABASE_URL) {
+    return json(500, { message: 'DATABASE_URL is not configured. Set it in Netlify environment variables.' });
+  }
+  if (!process.env.JWT_SECRET) {
+    return json(500, { message: 'JWT_SECRET is not configured. Set it in Netlify environment variables.' });
+  }
+
   const rawPath = event.path.replace('/.netlify/functions/api', '') || '/';
   const method = event.httpMethod;
   const body = parseBody(event);
@@ -64,7 +82,7 @@ export const handler: Handler = async (event) => {
       const { email, password } = body;
       if (!email || !password) return json(400, { message: 'Email and password required' });
 
-      const staff = await prisma.staff.findFirst({ where: { email } });
+      const staff = await getPrisma().staff.findFirst({ where: { email } });
       if (!staff) return json(401, { message: 'Invalid credentials' });
 
       const valid = await bcrypt.compare(password, staff.passwordHash);
@@ -75,7 +93,7 @@ export const handler: Handler = async (event) => {
       const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
       const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 
-      await prisma.staff.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
+      await getPrisma().staff.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
 
       return json(200, {
         accessToken, refreshToken,
@@ -86,11 +104,11 @@ export const handler: Handler = async (event) => {
     if (method === 'POST' && rawPath === '/auth/table/session') {
       const { tableId, guestName, guestPhone, guestCount } = body;
       if (!tableId) return json(400, { message: 'tableId required' });
-      const table = await prisma.table.findUnique({ where: { id: tableId } });
+      const table = await getPrisma().table.findUnique({ where: { id: tableId } });
       if (!table) return json(404, { message: 'Table not found' });
       const sessionToken = uuidv4();
       const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
-      await prisma.tableSession.create({ data: { tableId, sessionToken, guestName, guestPhone, guestCount: guestCount || 1, expiresAt } });
+      await getPrisma().tableSession.create({ data: { tableId, sessionToken, guestName, guestPhone, guestCount: guestCount || 1, expiresAt } });
       return json(200, { sessionToken, tableId, restaurantId: table.restaurantId, expiresAt });
     }
 
@@ -108,12 +126,12 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'GET') {
-        const r = await prisma.restaurant.findUnique({ where: { id: p.id } });
+        const r = await getPrisma().restaurant.findUnique({ where: { id: p.id } });
         if (!r) return json(404, { message: 'Not found' });
         return json(200, r);
       }
       if (method === 'PUT') {
-        const r = await prisma.restaurant.update({ where: { id: p.id }, data: body });
+        const r = await getPrisma().restaurant.update({ where: { id: p.id }, data: body });
         return json(200, r);
       }
     }
@@ -137,11 +155,11 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'GET') {
-        const tables = await prisma.table.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { tableNumber: 'asc' } });
+        const tables = await getPrisma().table.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { tableNumber: 'asc' } });
         return json(200, tables);
       }
       if (method === 'POST') {
-        const table = await prisma.table.create({ data: { ...body, restaurantId: p.restaurantId } });
+        const table = await getPrisma().table.create({ data: { ...body, restaurantId: p.restaurantId } });
         return json(200, table);
       }
     }
@@ -150,11 +168,11 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'PUT') {
-        const table = await prisma.table.update({ where: { id: p.id }, data: body });
+        const table = await getPrisma().table.update({ where: { id: p.id }, data: body });
         return json(200, table);
       }
       if (method === 'DELETE') {
-        await prisma.table.delete({ where: { id: p.id } });
+        await getPrisma().table.delete({ where: { id: p.id } });
         return json(200, { message: 'Deleted' });
       }
     }
@@ -163,7 +181,7 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/menu/categories/admin', rawPath);
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const cats = await prisma.category.findMany({ where: { restaurantId: p.restaurantId }, include: { items: true }, orderBy: { displayOrder: 'asc' } });
+      const cats = await getPrisma().category.findMany({ where: { restaurantId: p.restaurantId }, include: { items: true }, orderBy: { displayOrder: 'asc' } });
       return json(200, cats);
     }
 
@@ -171,7 +189,7 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'POST') {
-        const cat = await prisma.category.create({ data: { ...body, restaurantId: p.restaurantId } });
+        const cat = await getPrisma().category.create({ data: { ...body, restaurantId: p.restaurantId } });
         return json(200, cat);
       }
     }
@@ -180,11 +198,11 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'PUT') {
-        const cat = await prisma.category.update({ where: { id: p.id }, data: body });
+        const cat = await getPrisma().category.update({ where: { id: p.id }, data: body });
         return json(200, cat);
       }
       if (method === 'DELETE') {
-        await prisma.category.delete({ where: { id: p.id } });
+        await getPrisma().category.delete({ where: { id: p.id } });
         return json(200, { message: 'Deleted' });
       }
     }
@@ -192,16 +210,16 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/menu/items', rawPath);
     if (p && method === 'POST') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const item = await prisma.menuItem.create({ data: { ...body, restaurantId: p.restaurantId } });
+      const item = await getPrisma().menuItem.create({ data: { ...body, restaurantId: p.restaurantId } });
       return json(200, item);
     }
 
     p = matchPath('/restaurants/:restaurantId/menu/items/:id/toggle-availability', rawPath);
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const item = await prisma.menuItem.findUnique({ where: { id: p.id } });
+      const item = await getPrisma().menuItem.findUnique({ where: { id: p.id } });
       if (!item) return json(404, { message: 'Not found' });
-      const updated = await prisma.menuItem.update({ where: { id: p.id }, data: { isAvailable: !item.isAvailable } });
+      const updated = await getPrisma().menuItem.update({ where: { id: p.id }, data: { isAvailable: !item.isAvailable } });
       return json(200, updated);
     }
 
@@ -209,11 +227,11 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'PUT') {
-        const item = await prisma.menuItem.update({ where: { id: p.id }, data: body });
+        const item = await getPrisma().menuItem.update({ where: { id: p.id }, data: body });
         return json(200, item);
       }
       if (method === 'DELETE') {
-        await prisma.menuItem.delete({ where: { id: p.id } });
+        await getPrisma().menuItem.delete({ where: { id: p.id } });
         return json(200, { message: 'Deleted' });
       }
     }
@@ -225,7 +243,7 @@ export const handler: Handler = async (event) => {
       const where: any = { restaurantId: p.restaurantId };
       if (q.status) where.status = q.status;
       if (q.tableId) where.tableId = q.tableId;
-      const orders = await prisma.order.findMany({
+      const orders = await getPrisma().order.findMany({
         where,
         include: {
           items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
@@ -240,7 +258,7 @@ export const handler: Handler = async (event) => {
     p = matchPath('/orders/:id/mark-paid', rawPath);
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const updated = await prisma.order.update({ where: { id: p.id }, data: { paymentStatus: 'completed' } });
+      const updated = await getPrisma().order.update({ where: { id: p.id }, data: { paymentStatus: 'completed' } });
       return json(200, updated);
     }
 
@@ -248,13 +266,13 @@ export const handler: Handler = async (event) => {
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
       const { status } = body;
-      const updated = await prisma.order.update({ where: { id: p.id }, data: { status } });
+      const updated = await getPrisma().order.update({ where: { id: p.id }, data: { status } });
       return json(200, updated);
     }
 
     p = matchPath('/orders/:id', rawPath);
     if (p && method === 'GET') {
-      const order = await prisma.order.findUnique({
+      const order = await getPrisma().order.findUnique({
         where: { id: p.id },
         include: { items: { include: { menuItem: true } }, table: true },
       });
@@ -267,7 +285,7 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'GET') {
-        const staff = await prisma.staff.findMany({
+        const staff = await getPrisma().staff.findMany({
           where: { restaurantId: p.restaurantId },
           select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true, lastLoginAt: true },
         });
@@ -276,7 +294,7 @@ export const handler: Handler = async (event) => {
       if (method === 'POST') {
         const { email, name, role, password, phone } = body;
         const passwordHash = await bcrypt.hash(password, 10);
-        const staff = await prisma.staff.create({ data: { email, name, role, phone: phone || '', passwordHash, restaurantId: p.restaurantId } });
+        const staff = await getPrisma().staff.create({ data: { email, name, role, phone: phone || '', passwordHash, restaurantId: p.restaurantId } });
         return json(200, { id: staff.id, email: staff.email, name: staff.name, role: staff.role });
       }
     }
@@ -287,11 +305,11 @@ export const handler: Handler = async (event) => {
       if (method === 'PUT') {
         const updateData: any = { ...body };
         if (body.password) { updateData.passwordHash = await bcrypt.hash(body.password, 10); delete updateData.password; }
-        const staff = await prisma.staff.update({ where: { id: p.id }, data: updateData });
+        const staff = await getPrisma().staff.update({ where: { id: p.id }, data: updateData });
         return json(200, { id: staff.id, email: staff.email, name: staff.name, role: staff.role });
       }
       if (method === 'DELETE') {
-        await prisma.staff.delete({ where: { id: p.id } });
+        await getPrisma().staff.delete({ where: { id: p.id } });
         return json(200, { message: 'Deleted' });
       }
     }
@@ -301,11 +319,11 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'GET') {
-        const coupons = await prisma.coupon.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
+        const coupons = await getPrisma().coupon.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
         return json(200, coupons);
       }
       if (method === 'POST') {
-        const coupon = await prisma.coupon.create({ data: { ...body, restaurantId: p.restaurantId } });
+        const coupon = await getPrisma().coupon.create({ data: { ...body, restaurantId: p.restaurantId } });
         return json(200, coupon);
       }
     }
@@ -313,16 +331,16 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/coupons/:id/toggle', rawPath);
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const coupon = await prisma.coupon.findUnique({ where: { id: p.id } });
+      const coupon = await getPrisma().coupon.findUnique({ where: { id: p.id } });
       if (!coupon) return json(404, { message: 'Not found' });
-      const updated = await prisma.coupon.update({ where: { id: p.id }, data: { isActive: !coupon.isActive } });
+      const updated = await getPrisma().coupon.update({ where: { id: p.id }, data: { isActive: !coupon.isActive } });
       return json(200, updated);
     }
 
     p = matchPath('/restaurants/:restaurantId/coupons/:id', rawPath);
     if (p && method === 'DELETE') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      await prisma.coupon.delete({ where: { id: p.id } });
+      await getPrisma().coupon.delete({ where: { id: p.id } });
       return json(200, { message: 'Deleted' });
     }
 
@@ -340,7 +358,7 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/reviews', rawPath);
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const reviews = await prisma.review.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
+      const reviews = await getPrisma().review.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
       return json(200, reviews);
     }
 
@@ -364,7 +382,7 @@ export const handler: Handler = async (event) => {
       const where: any = { restaurantId: p.restaurantId, status: 'completed' };
       if (q.startDate) where.createdAt = { ...where.createdAt, gte: new Date(q.startDate) };
       if (q.endDate) where.createdAt = { ...where.createdAt, lte: new Date(q.endDate) };
-      const agg = await prisma.order.aggregate({ where, _sum: { totalAmount: true }, _count: true });
+      const agg = await getPrisma().order.aggregate({ where, _sum: { totalAmount: true }, _count: true });
       return json(200, { totalRevenue: agg._sum.totalAmount || 0, totalOrders: agg._count });
     }
 
