@@ -148,23 +148,18 @@ export const handler: Handler = async (event) => {
       const rid = p.restaurantId;
       const today = new Date(new Date().setHours(0, 0, 0, 0));
       const db = getPrisma();
-      const [
-        totalTables, occupiedTables, availableTables,
-        todayOrders, pendingOrders,
-        todayRevenue, totalRevenue,
-        pendingWaiterCalls,
-        reviewStats,
-      ] = await Promise.all([
-        db.table.count({ where: { restaurantId: rid, isActive: true } }),
-        db.table.count({ where: { restaurantId: rid, status: 'occupied' } }),
-        db.table.count({ where: { restaurantId: rid, status: 'available' } }),
-        db.order.count({ where: { restaurantId: rid, createdAt: { gte: today } } }),
-        db.order.count({ where: { restaurantId: rid, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } }),
-        db.order.aggregate({ where: { restaurantId: rid, status: 'completed', createdAt: { gte: today } }, _sum: { totalAmount: true } }),
-        db.order.aggregate({ where: { restaurantId: rid, status: 'completed' }, _sum: { totalAmount: true } }),
-        db.waiterCall.count({ where: { restaurantId: rid, status: 'pending' } }),
-        db.review.aggregate({ where: { restaurantId: rid }, _avg: { foodRating: true, serviceRating: true } }),
-      ]);
+
+      // Run sequentially to avoid connection pool exhaustion (connection_limit=1)
+      const totalTables = await db.table.count({ where: { restaurantId: rid, isActive: true } });
+      const occupiedTables = await db.table.count({ where: { restaurantId: rid, status: 'occupied' } });
+      const availableTables = await db.table.count({ where: { restaurantId: rid, status: 'available' } });
+      const todayOrders = await db.order.count({ where: { restaurantId: rid, createdAt: { gte: today } } });
+      const pendingOrders = await db.order.count({ where: { restaurantId: rid, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } });
+      const todayRevenue = await db.order.aggregate({ where: { restaurantId: rid, status: 'completed', createdAt: { gte: today } }, _sum: { totalAmount: true } });
+      const totalRevenue = await db.order.aggregate({ where: { restaurantId: rid, status: 'completed' }, _sum: { totalAmount: true } });
+      const pendingWaiterCalls = await db.waiterCall.count({ where: { restaurantId: rid, status: 'pending' } });
+      const reviewStats = await db.review.aggregate({ where: { restaurantId: rid }, _avg: { foodRating: true, serviceRating: true } });
+
       return json(200, {
         tables: { total: totalTables, occupied: occupiedTables, available: availableTables },
         orders: { today: todayOrders, pending: pendingOrders },
