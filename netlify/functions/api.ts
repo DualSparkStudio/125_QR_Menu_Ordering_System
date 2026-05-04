@@ -272,6 +272,11 @@ export const handler: Handler = async (event) => {
       const totalCount = await db.order.count({});
       const matchCount = await db.order.count({ where: { restaurantId: p.restaurantId } });
       console.log(`[orders] total orders in DB: ${totalCount}, matching restaurantId: ${matchCount}`);
+      // Log the actual restaurantIds in DB to find the mismatch
+      const sampleOrders = await db.order.findMany({ take: 3, select: { restaurantId: true } });
+      console.log(`[orders] sample restaurantIds in DB:`, sampleOrders.map(o => o.restaurantId));
+      const restaurants = await db.restaurant.findMany({ select: { id: true, name: true } });
+      console.log(`[orders] restaurants in DB:`, restaurants);
       const orders = await getPrisma().order.findMany({
         where,
         include: {
