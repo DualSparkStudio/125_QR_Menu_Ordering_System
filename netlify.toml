@@ -2,6 +2,7 @@
   base = "admin-dashboard"
   command = "npm install && npm run build && cd ../netlify/functions && npm install && npx prisma generate"
   publish = ".next"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../netlify/functions"
 
 [functions]
   directory = "../netlify/functions"
