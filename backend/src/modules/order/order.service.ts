@@ -183,6 +183,7 @@ export class OrderService {
         items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
         table: { select: { id: true, tableNumber: true, section: true } },
         payment: { select: { id: true, status: true, paymentMethod: true } },
+        restaurant: { select: { id: true, name: true, address: true, phone: true, email: true, taxPercentage: true, serviceChargePercentage: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

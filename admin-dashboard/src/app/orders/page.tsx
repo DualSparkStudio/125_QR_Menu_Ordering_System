@@ -5,11 +5,24 @@ import AdminLayout from '@/components/AdminLayout';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
 
-const NEXT: Record<string, string> = {
-  pending: 'confirmed', confirmed: 'preparing', preparing: 'ready', ready: 'served', served: 'completed',
+const STATUS_OPTIONS = ['pending', 'confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled'];
+const STATUS_LABELS: Record<string, string> = {
+  pending: '🕐 Pending',
+  confirmed: '✓ Confirmed',
+  preparing: '👨‍🍳 Cooking',
+  ready: '🔔 Ready',
+  served: '🍽️ Served',
+  completed: '✅ Completed',
+  cancelled: '✕ Cancelled',
 };
-const NEXT_LABEL: Record<string, string> = {
-  pending: '✓ Confirm', confirmed: '👨‍🍳 Cooking', preparing: '🔔 Ready', ready: '🍽️ Served', served: '✓ Complete',
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'text-yellow-600',
+  confirmed: 'text-blue-600',
+  preparing: 'text-orange-600',
+  ready: 'text-green-600',
+  served: 'text-purple-600',
+  completed: 'text-gray-500',
+  cancelled: 'text-red-500',
 };
 const FILTERS = ['', 'pending', 'confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled'];
 const FILTER_LABELS: Record<string, string> = {
@@ -36,48 +49,42 @@ export default function OrdersPage() {
   useEffect(() => { load(); }, [filter, staff, token]);
   useEffect(() => { const t = setInterval(load, 20000); return () => clearInterval(t); }, [filter, staff, token]);
 
-  const advance = async (id: string, status: string) => {
-    const next = NEXT[status];
-    if (!next || !token) return;
+  const updateStatus = async (id: string, newStatus: string) => {
+    if (!token) return;
     setUpdating(id);
-    try { await adminApi.updateOrderStatus(id, next, token); await load(); } finally { setUpdating(null); }
+    try { await adminApi.updateOrderStatus(id, newStatus, token); await load(); } finally { setUpdating(null); }
   };
 
-  const cancel = async (id: string) => {
-    if (!token || !confirm('Cancel this order?')) return;
+  const markPaid = async (id: string) => {
+    if (!token) return;
     setUpdating(id);
-    try { await adminApi.updateOrderStatus(id, 'cancelled', token); await load(); } finally { setUpdating(null); }
+    try { await adminApi.markAsPaid(id, token); await load(); } finally { setUpdating(null); }
   };
 
   const printBill = async (order: any) => {
-    console.log('Starting printBill for order:', order.id);
-    console.log('Order data:', order);
+    // Use restaurant from order, or fall back to fetching it
+    let restaurantDetails = order.restaurant;
 
-    // Use restaurant details from the order (already included in API response)
-    const restaurantDetails = order.restaurant;
+    if (!restaurantDetails && staff?.restaurantId && token) {
+      try {
+        restaurantDetails = await adminApi.getRestaurant(staff.restaurantId, token);
+      } catch {
+        alert('Unable to load restaurant details. Please refresh and try again.');
+        return;
+      }
+    }
 
     if (!restaurantDetails) {
-      console.error('No restaurant details in order!');
-      alert('Unable to load restaurant details. Please refresh the page and try again.');
+      alert('Unable to load restaurant details. Please refresh and try again.');
       return;
     }
 
-    // Extract values to ensure they're properly evaluated
     const restaurantName = restaurantDetails.name || 'Restaurant';
     const restaurantAddress = restaurantDetails.address || '';
     const restaurantPhone = restaurantDetails.phone || '';
     const restaurantEmail = restaurantDetails.email || '';
     const taxPercentage = restaurantDetails.taxPercentage || 0;
     const serviceChargePercentage = restaurantDetails.serviceChargePercentage || 0;
-
-    console.log('Restaurant details for bill:', {
-      restaurantName,
-      restaurantAddress,
-      restaurantPhone,
-      restaurantEmail,
-      taxPercentage,
-      serviceChargePercentage
-    });
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -323,20 +330,34 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <p className="font-black text-gray-900 text-lg">₹{order.totalAmount?.toFixed(0)}</p>
-                      <div className="flex gap-1.5 flex-wrap justify-end">
+                      <div className="flex gap-1.5 flex-wrap justify-end items-center">
                         <button onClick={() => printBill(order)}
                           className="btn-secondary text-xs px-3 py-2 flex items-center gap-1">
                           🖨️ Bill
                         </button>
-                        {NEXT[order.status] && (
-                          <button onClick={() => advance(order.id, order.status)} disabled={updating === order.id}
-                            className="btn-primary text-xs px-3 py-2">
-                            {updating === order.id ? '...' : NEXT_LABEL[order.status]}
+                        {order.status === 'completed' && order.paymentStatus !== 'completed' && (
+                          <button
+                            onClick={() => markPaid(order.id)}
+                            disabled={updating === order.id}
+                            className="text-xs font-semibold px-3 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-50"
+                          >
+                            💰 Mark Paid
                           </button>
                         )}
-                        {['pending', 'confirmed'].includes(order.status) && (
-                          <button onClick={() => cancel(order.id)} disabled={updating === order.id}
-                            className="btn-danger text-xs px-3 py-2">✕</button>
+                        <select
+                          value={order.status}
+                          disabled={updating === order.id}
+                          onChange={(e) => updateStatus(order.id, e.target.value)}
+                          className={`text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white cursor-pointer focus:outline-none focus:border-orange-400 transition-all disabled:opacity-50 ${STATUS_COLORS[order.status]}`}
+                        >
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s} value={s} className="text-gray-700">
+                              {STATUS_LABELS[s]}
+                            </option>
+                          ))}
+                        </select>
+                        {updating === order.id && (
+                          <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
                         )}
                       </div>
                     </div>

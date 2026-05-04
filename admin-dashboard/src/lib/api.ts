@@ -118,6 +118,10 @@ export const adminApi = {
   getReviewStats: (restaurantId: string, token: string) =>
     req(`/restaurants/${restaurantId}/reviews/stats`, {}, token),
 
+  // Mark as paid
+  markAsPaid: (id: string, token: string) =>
+    req(`/orders/${id}/mark-paid`, { method: 'PUT' }, token),
+
   // Reports
   getSalesReport: (restaurantId: string, token: string, startDate: string, endDate: string) =>
     req(`/restaurants/${restaurantId}/reports/sales?startDate=${startDate}&endDate=${endDate}`, {}, token),
