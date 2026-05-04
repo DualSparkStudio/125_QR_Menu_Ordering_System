@@ -27,11 +27,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     setMounted(true);
-    if (!isAuthenticated()) router.replace('/');
-  }, []);
+    if (!isAuthenticated) router.replace('/');
+  }, [isAuthenticated, router]);
 
   // Show spinner while checking auth / redirecting
-  if (!mounted || !isAuthenticated()) {
+  if (!mounted || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />

@@ -15,8 +15,8 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
     // If already logged in, go straight to dashboard
-    if (isAuthenticated()) router.replace('/dashboard');
-  }, []);
+    if (isAuthenticated) router.replace('/dashboard');
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +34,7 @@ export default function LoginPage() {
   );
 
   // Already authenticated — show spinner while redirecting
-  if (isAuthenticated()) return (
+  if (isAuthenticated) return (
     <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
     </div>

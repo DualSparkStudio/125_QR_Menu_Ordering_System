@@ -16,10 +16,23 @@ async function req<T>(url: string, options?: RequestInit, token?: string): Promi
   return res.json();
 }
 
+// Types
+interface StaffLoginResponse {
+  staff: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    restaurantId: string;
+  };
+  accessToken: string;
+  refreshToken: string;
+}
+
 export const adminApi = {
   // Auth
-  login: (email: string, password: string) =>
-    req('/auth/staff/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  staffLogin: (email: string, password: string) =>
+    req<StaffLoginResponse>('/auth/staff/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
 
   // Restaurant
   getRestaurant: (id: string, token: string) => req(`/restaurants/${id}`, {}, token),

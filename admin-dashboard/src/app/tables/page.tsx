@@ -63,7 +63,7 @@ export default function TablesPage() {
     await load();
   };
 
-  const sections = [...new Set(tables.map((t) => t.section))];
+  const sections = Array.from(new Set(tables.map((t) => t.section)));
   const occupied = tables.filter((t) => t.status === 'occupied').length;
 
   return (

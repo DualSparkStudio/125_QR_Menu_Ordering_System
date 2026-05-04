@@ -6,7 +6,7 @@ export interface AdminUser {
   email: string;
   name: string;
   role: string;
-  resortId: string;
+  restaurantId: string;
 }
 
 export interface AuthState {
