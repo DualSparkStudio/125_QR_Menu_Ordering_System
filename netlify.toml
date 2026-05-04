@@ -1,6 +1,6 @@
 [build]
   base = "admin-dashboard"
-  command = "cd /opt/build/repo/netlify/functions && npm install && npx prisma generate && cd /opt/build/repo/admin-dashboard && npm install && npm run build"
+  command = "npm install && npm run build"
   publish = ".next"
 
 [functions]
@@ -16,6 +16,9 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
 
 [build.environment]
   NODE_VERSION = "18"
