@@ -101,8 +101,28 @@ export default function OrdersPage() {
             {orders.map((order) => {
               const age = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
               const isUrgent = age > 20 && ['pending', 'confirmed', 'preparing'].includes(order.status);
+              const isNew = age < 2; // New if less than 2 minutes old
+              const hasRecentItems = order.items?.some((item: any) => {
+                const itemAge = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 60000);
+                return itemAge < 2;
+              });
+              
+              // Determine card background color
+              let cardBgClass = 'bg-white';
+              let borderClass = 'border-gray-200';
+              if (isUrgent) {
+                cardBgClass = 'bg-red-50';
+                borderClass = 'border-red-300';
+              } else if (isNew) {
+                cardBgClass = 'bg-green-50';
+                borderClass = 'border-green-300';
+              } else if (hasRecentItems && !isNew) {
+                cardBgClass = 'bg-blue-50';
+                borderClass = 'border-blue-300';
+              }
+              
               return (
-                <div key={order.id} className={`card overflow-hidden ${isUrgent ? 'border-red-200' : ''}`}>
+                <div key={order.id} className={`card overflow-hidden ${cardBgClass} border-2 ${borderClass}`}>
                   <div className="flex items-start gap-4 p-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -111,7 +131,8 @@ export default function OrdersPage() {
                         <span className={`badge ${order.paymentStatus === 'completed' ? 'badge-paid' : 'badge-unpaid'}`}>
                           {order.paymentStatus === 'completed' ? '✓ Paid' : 'Unpaid'}
                         </span>
-                        {isUrgent && <span className="badge bg-red-50 text-red-600 border border-red-200">⚠ {age}m</span>}
+                        {isUrgent && <span className="badge bg-red-100 text-red-700 border border-red-300 font-bold">⚠ {age}m DELAYED</span>}
+                        {isNew && <span className="badge bg-green-100 text-green-700 border border-green-300 font-bold">🆕 NEW</span>}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-400 mb-2 flex-wrap">
                         <span>Table {order.table?.tableNumber}</span>
@@ -120,11 +141,17 @@ export default function OrdersPage() {
                         <span>· {new Date(order.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {order.items?.map((item: any) => (
-                          <span key={item.id} className="inline-flex items-center gap-1 bg-gray-50 border border-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-lg font-medium">
-                            <span className="text-gray-400">×{item.quantity}</span> {item.menuItem?.name}
-                          </span>
-                        ))}
+                        {order.items?.map((item: any) => {
+                          const itemAge = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 60000);
+                          const isNewItem = itemAge < 2 && !isNew; // New item in existing order
+                          return (
+                            <span key={item.id} className={`inline-flex items-center gap-1 ${isNewItem ? 'bg-blue-100 border-blue-300 text-blue-700 font-semibold' : 'bg-gray-50 border-gray-100 text-gray-600'} border text-xs px-2.5 py-1 rounded-lg font-medium`}>
+                              {isNewItem && <span className="text-blue-500">🆕</span>}
+                              <span className="text-gray-400">×{item.quantity}</span> {item.menuItem?.name}
+                            </span>
+                          );
+                        })}
+                      </div>
                       </div>
                       {order.specialInstructions && (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 mt-2">
