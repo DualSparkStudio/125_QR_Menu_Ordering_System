@@ -42,6 +42,8 @@ export default function OrdersPage() {
       window.location.href = '/admin';
     }
   }, [isAuthenticated, loading]);
+
+  const load = async () => {
     if (!staff?.restaurantId || !token) {
       setLoading(false);
       return;
