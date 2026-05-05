@@ -219,6 +219,17 @@ export const handler: Handler = async (event) => {
     }
 
     // ── MENU ──────────────────────────────────────────────────────────────
+    // Public route: Get menu categories for guests
+    p = matchPath('/restaurants/:restaurantId/menu/categories', rawPath);
+    if (p && method === 'GET') {
+      const cats = await getPrisma().category.findMany({
+        where: { restaurantId: p.restaurantId, isActive: true },
+        include: { items: { where: { isAvailable: true }, orderBy: { displayOrder: 'asc' } } },
+        orderBy: { displayOrder: 'asc' },
+      });
+      return json(200, cats);
+    }
+
     p = matchPath('/restaurants/:restaurantId/menu/categories/admin', rawPath);
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
@@ -278,6 +289,101 @@ export const handler: Handler = async (event) => {
     }
 
     // ── ORDERS ────────────────────────────────────────────────────────────
+    // Public route: Get active orders for a table
+    p = matchPath('/tables/:tableId/orders/active', rawPath);
+    if (p && method === 'GET') {
+      const orders = await getPrisma().order.findMany({
+        where: {
+          tableId: p.tableId,
+          status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+        },
+        include: {
+          items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
+          table: { select: { id: true, tableNumber: true, section: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return json(200, orders);
+    }
+
+    // Public route: Create order for a table
+    p = matchPath('/restaurants/:restaurantId/tables/:tableId/orders', rawPath);
+    if (p && method === 'POST') {
+      const { items, guestName, guestPhone, guestCount, specialInstructions, couponCode } = body;
+      
+      // Get restaurant for tax/service charge
+      const restaurant = await getPrisma().restaurant.findUnique({ where: { id: p.restaurantId } });
+      if (!restaurant) return json(404, { message: 'Restaurant not found' });
+
+      // Calculate totals
+      let subtotal = 0;
+      for (const item of items) {
+        const menuItem = await getPrisma().menuItem.findUnique({ where: { id: item.menuItemId } });
+        if (menuItem) subtotal += menuItem.basePrice * item.quantity;
+      }
+
+      const taxAmount = subtotal * (restaurant.taxPercentage / 100);
+      const serviceCharge = subtotal * (restaurant.serviceChargePercentage / 100);
+      let discountAmount = 0;
+      let couponId = null;
+
+      // Apply coupon if provided
+      if (couponCode) {
+        const coupon = await getPrisma().coupon.findFirst({
+          where: { restaurantId: p.restaurantId, code: couponCode, isActive: true },
+        });
+        if (coupon && subtotal >= coupon.minOrderValue) {
+          if (coupon.discountType === 'percentage') {
+            discountAmount = subtotal * (coupon.discountValue / 100);
+            if (coupon.maxDiscount) discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+          } else {
+            discountAmount = coupon.discountValue;
+          }
+          couponId = coupon.id;
+        }
+      }
+
+      const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
+
+      // Generate order number
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // Create order
+      const order = await getPrisma().order.create({
+        data: {
+          restaurantId: p.restaurantId,
+          tableId: p.tableId,
+          orderNumber,
+          guestName,
+          guestPhone,
+          guestCount: guestCount || 1,
+          specialInstructions,
+          subtotal,
+          taxAmount,
+          serviceCharge,
+          discountAmount,
+          totalAmount,
+          couponId,
+          couponCode,
+          items: {
+            create: items.map((item: any) => ({
+              menuItemId: item.menuItemId,
+              quantity: item.quantity,
+              price: item.price,
+              selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
+              specialInstructions: item.specialInstructions,
+            })),
+          },
+        },
+        include: {
+          items: { include: { menuItem: true } },
+          table: true,
+        },
+      });
+
+      return json(200, order);
+    }
+
     p = matchPath('/restaurants/:restaurantId/orders', rawPath);
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
