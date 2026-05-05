@@ -26,8 +26,6 @@ function MenuContent() {
   const [showOrders, setShowOrders] = useState(false);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-  const [tableOccupied, setTableOccupied] = useState(false);
-  const [occupiedByOther, setOccupiedByOther] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Initialize session on mount
@@ -50,34 +48,6 @@ function MenuContent() {
   useEffect(() => {
     if (categories.length && !activeCategory) setActiveCategory(categories[0].id);
   }, [categories]);
-
-  // Check if table is occupied by ANOTHER session
-  useEffect(() => {
-    if (!table?.id) return;
-
-    const checkTableStatus = async () => {
-      try {
-        const orders: any = await api.getActiveOrders(table.id);
-        
-        // Table is only occupied if there are active orders AND user has never placed an order
-        // Once user places an order (hasActiveSession = true), they can continue ordering
-        if (orders.length > 0 && !hasActiveSession && getItemCount() === 0) {
-          setTableOccupied(true);
-          setOccupiedByOther(true);
-        } else {
-          setTableOccupied(false);
-          setOccupiedByOther(false);
-        }
-      } catch (err) {
-        console.error('Failed to check table status:', err);
-      }
-    };
-
-    checkTableStatus();
-    // Check every 10 seconds (reduced frequency)
-    const interval = setInterval(checkTableStatus, 10000);
-    return () => clearInterval(interval);
-  }, [table?.id, hasActiveSession, getItemCount]);
 
   // Listen for payment completion events - ONLY if user has active session
   useEffect(() => {
@@ -209,29 +179,6 @@ function MenuContent() {
 
   return (
     <div className="min-h-screen bg-[#fff8f3] pb-32">
-      {/* Table Occupied Warning */}
-      {occupiedByOther && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">🚫</span>
-              </div>
-              <h2 className="text-xl font-black text-gray-900 mb-2">Table Occupied</h2>
-              <p className="text-gray-600 text-sm mb-6">
-                This table is currently being used. Please wait for the current order to be completed or contact staff for assistance.
-              </p>
-              <button 
-                onClick={() => router.push('/')} 
-                className="btn-primary w-full"
-              >
-                Go Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="bg-white sticky top-0 z-20 border-b border-orange-100 shadow-sm shadow-orange-50">
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-3">
