@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { adminApi } from '@/lib/api';
 
 interface Staff {
@@ -14,50 +15,45 @@ interface AuthStore {
   token: string | null;
   loading: boolean;
   error: string | null;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  isAuthenticated: () => boolean;
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
-  staff: null,
-  token: null,
-  loading: false,
-  error: null,
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
+      staff: null,
+      token: null,
+      loading: false,
+      error: null,
+      isAuthenticated: false,
 
-  login: async (email, password) => {
-    set({ loading: true, error: null });
-    try {
-      const res: any = await adminApi.login(email, password);
-      set({ staff: res.staff, token: res.accessToken, loading: false });
-      // Store in localStorage manually
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('admin-auth', JSON.stringify({ staff: res.staff, token: res.accessToken }));
-      }
-    } catch (e: any) {
-      set({ error: e.message, loading: false });
-      throw e;
-    }
-  },
+      login: async (email, password) => {
+        set({ loading: true, error: null });
+        try {
+          const res: any = await adminApi.staffLogin(email, password);
+          set({
+            staff: res.staff,
+            token: res.accessToken,
+            loading: false,
+            isAuthenticated: true,
+          });
+        } catch (e: any) {
+          set({ error: e.message, loading: false, isAuthenticated: false });
+          throw e;
+        }
+      },
 
-  logout: () => {
-    set({ staff: null, token: null });
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('admin-auth');
+      logout: () => set({ staff: null, token: null, isAuthenticated: false }),
+    }),
+    {
+      name: 'admin-auth',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isAuthenticated = !!(state.token && state.staff);
+        }
+      },
     }
-  },
-
-  isAuthenticated: () => {
-    const state = get();
-    // Try to restore from localStorage if not in state
-    if (!state.token && typeof window !== 'undefined') {
-      const stored = localStorage.getItem('admin-auth');
-      if (stored) {
-        const data = JSON.parse(stored);
-        set({ staff: data.staff, token: data.token });
-        return true;
-      }
-    }
-    return !!state.token && !!state.staff;
-  },
-}));
+  )
+);

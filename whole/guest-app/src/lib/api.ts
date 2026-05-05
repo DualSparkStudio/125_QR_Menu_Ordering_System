@@ -18,7 +18,7 @@ async function req<T>(url: string, options?: RequestInit, token?: string): Promi
 
 export const adminApi = {
   // Auth
-  login: (email: string, password: string) =>
+  staffLogin: (email: string, password: string) =>
     req('/auth/staff/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
 
   // Restaurant

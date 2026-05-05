@@ -17,10 +17,10 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (mounted && isAuthenticated()) {
+    if (mounted && isAuthenticated) {
       router.replace('/admin/dashboard');
     }
-  }, [mounted, router]);
+  }, [mounted, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
