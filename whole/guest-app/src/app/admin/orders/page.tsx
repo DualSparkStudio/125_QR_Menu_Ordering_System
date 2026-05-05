@@ -59,7 +59,37 @@ export default function OrdersPage() {
   const updateStatus = async (id: string, newStatus: string) => {
     if (!token) return;
     setUpdating(id);
-    try { await adminApi.updateOrderStatus(id, newStatus, token); await load(); } finally { setUpdating(null); }
+    try { 
+      await adminApi.updateOrderStatus(id, newStatus, token); 
+      
+      // If order status is changed, update all items to match
+      const order = orders.find(o => o.id === id);
+      if (order && order.items) {
+        // Map order status to item status
+        const itemStatusMap: Record<string, string> = {
+          'pending': 'pending',
+          'confirmed': 'pending',
+          'preparing': 'preparing',
+          'ready': 'ready',
+          'served': 'served',
+          'completed': 'served',
+          'cancelled': 'pending',
+        };
+        
+        const itemStatus = itemStatusMap[newStatus] || 'pending';
+        
+        // Update all items to match the order status
+        await Promise.all(
+          order.items.map((item: any) => 
+            adminApi.updateItemStatus(item.id, itemStatus, token)
+          )
+        );
+      }
+      
+      await load(); 
+    } finally { 
+      setUpdating(null); 
+    }
   };
 
   const markPaid = async (id: string) => {

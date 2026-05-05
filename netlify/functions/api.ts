@@ -576,6 +576,27 @@ export const handler: Handler = async (event) => {
       return json(200, updated);
     }
 
+    // Update individual order item status
+    p = matchPath('/order-items/:itemId/status', rawPath);
+    if (p && method === 'PUT') {
+      if (!token) return json(401, { message: 'Unauthorized' });
+      const { status } = body;
+      
+      const item = await getPrisma().orderItem.findUnique({
+        where: { id: p.itemId },
+        include: { order: true },
+      });
+      
+      if (!item) return json(404, { message: 'Order item not found' });
+      
+      const updated = await getPrisma().orderItem.update({
+        where: { id: p.itemId },
+        data: { status },
+      });
+      
+      return json(200, updated);
+    }
+
     p = matchPath('/orders/:id', rawPath);
     if (p && method === 'GET') {
       const order = await getPrisma().order.findUnique({
