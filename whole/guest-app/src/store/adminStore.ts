@@ -6,7 +6,7 @@ export interface AdminUser {
   email: string;
   name: string;
   role: string;
-  resortId: string;
+  restaurantId: string;
 }
 
 export interface AuthState {
@@ -37,7 +37,7 @@ export const useAdminStore = create<AdminStore>((set) => ({
   login: async (email: string, password: string) => {
     set({ loading: true, error: null });
     try {
-      const response: any = await adminApi.login(email, password);
+      const response: any = await adminApi.staffLogin(email, password);
       set({
         user: response.staff,
         token: response.accessToken,
