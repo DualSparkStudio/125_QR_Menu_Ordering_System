@@ -118,6 +118,8 @@ model Category {
 
   @@unique([restaurantId, name])
   @@index([restaurantId])
+  @@index([restaurantId, isActive])
+  @@index([displayOrder])
 }
 
 // ============ MENU ITEMS ============
@@ -156,6 +158,7 @@ model MenuItem {
 
   @@index([restaurantId])
   @@index([categoryId])
+  @@index([categoryId, isAvailable, displayOrder])
   @@index([isAvailable])
 }
 

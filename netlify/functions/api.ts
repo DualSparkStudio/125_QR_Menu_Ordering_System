@@ -17,13 +17,14 @@ const getPrisma = () => {
 };
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
-const json = (statusCode: number, body: any) => ({
+const json = (statusCode: number, body: any, cacheControl?: string) => ({
   statusCode,
   headers: {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    ...(cacheControl ? { 'Cache-Control': cacheControl } : {}),
   },
   body: JSON.stringify(body),
 });
@@ -170,26 +171,28 @@ export const handler: Handler = async (event) => {
     }
 
     // ── TABLES ────────────────────────────────────────────────────────────
-    // Public route: Get table by QR code
+    // Public route: Get table by QR code (with caching)
     p = matchPath('/tables/qr/:code', rawPath);
     if (p && method === 'GET') {
       const table = await getPrisma().table.findFirst({
         where: { qrCode: p.code, isActive: true },
-        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true } } },
+        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true, isOpen: true, currency: true, taxPercentage: true, serviceChargePercentage: true } } },
       });
       if (!table) return json(404, { message: 'Table not found' });
-      return json(200, table);
+      // Cache for 1 minute (table data changes less frequently)
+      return json(200, table, 'public, max-age=60, s-maxage=60');
     }
 
-    // Public route: Get table by table number
+    // Public route: Get table by table number (with caching)
     p = matchPath('/tables/number/:tableNumber', rawPath);
     if (p && method === 'GET') {
       const table = await getPrisma().table.findFirst({
         where: { tableNumber: p.tableNumber, isActive: true },
-        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true } } },
+        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true, isOpen: true, currency: true, taxPercentage: true, serviceChargePercentage: true } } },
       });
       if (!table) return json(404, { message: 'Table not found' });
-      return json(200, table);
+      // Cache for 1 minute
+      return json(200, table, 'public, max-age=60, s-maxage=60');
     }
 
     p = matchPath('/restaurants/:restaurantId/tables', rawPath);
@@ -219,15 +222,35 @@ export const handler: Handler = async (event) => {
     }
 
     // ── MENU ──────────────────────────────────────────────────────────────
-    // Public route: Get menu categories for guests
+    // Public route: Get menu categories for guests (with caching)
     p = matchPath('/restaurants/:restaurantId/menu/categories', rawPath);
     if (p && method === 'GET') {
       const cats = await getPrisma().category.findMany({
         where: { restaurantId: p.restaurantId, isActive: true },
-        include: { items: { where: { isAvailable: true }, orderBy: { displayOrder: 'asc' } } },
+        include: { 
+          items: { 
+            where: { isAvailable: true }, 
+            orderBy: { displayOrder: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              image: true,
+              basePrice: true,
+              isVegetarian: true,
+              isVegan: true,
+              isGlutenFree: true,
+              spiceLevel: true,
+              isFeatured: true,
+              preparationTime: true,
+              displayOrder: true,
+            }
+          } 
+        },
         orderBy: { displayOrder: 'asc' },
       });
-      return json(200, cats);
+      // Cache for 5 minutes (public data that doesn't change often)
+      return json(200, cats, 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
     }
 
     p = matchPath('/restaurants/:restaurantId/menu/categories/admin', rawPath);

@@ -122,7 +122,11 @@ export const useRestaurantStore = create<RestaurantStore>((set, get) => ({
       // Detect if it's a UUID (QR code) or a plain table number
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
       const url = isUUID ? `${BASE}/tables/qr/${code}` : `${BASE}/tables/number/${code}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        // Enable browser caching
+        cache: 'force-cache',
+        next: { revalidate: 60 }
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Table not found');
