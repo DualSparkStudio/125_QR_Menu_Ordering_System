@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import { NotificationService } from '../notification/notification.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class OrderService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private notificationService: NotificationService,
   ) {}
 
   async createOrder(restaurantId: string, tableId: string, dto: CreateOrderDto) {
@@ -27,7 +29,7 @@ export class OrderService {
     const existingOrder = await this.prisma.order.findFirst({
       where: {
         tableId,
-        status: { in: ['pending', 'confirmed', 'preparing', 'ready'] },
+        status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -108,6 +110,11 @@ export class OrderService {
     // Publish event
     await this.redis.publish(`restaurant:${restaurantId}`, JSON.stringify({ event: 'order_placed', data: order }));
 
+    // Send notification immediately (non-blocking)
+    this.notificationService.sendOrderConfirmation(order.id).catch(err => 
+      this.logger.error('Failed to send order confirmation notification', err)
+    );
+
     return order;
   }
 
@@ -118,7 +125,7 @@ export class OrderService {
     });
 
     if (!order) throw new NotFoundException('Order not found');
-    if (!['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)) {
+    if (!['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(order.status)) {
       throw new BadRequestException('Cannot add items to completed order');
     }
 
@@ -164,6 +171,11 @@ export class OrderService {
 
     // Publish event
     await this.redis.publish(`restaurant:${order.restaurantId}`, JSON.stringify({ event: 'order_updated', data: updatedOrder }));
+
+    // Send notification for items added to existing order
+    this.notificationService.sendOrderConfirmation(updatedOrder.id).catch(err => 
+      this.logger.error('Failed to send order update notification', err)
+    );
 
     return updatedOrder;
   }
@@ -264,6 +276,11 @@ export class OrderService {
     }
 
     await this.redis.publish(`restaurant:${order.restaurantId}`, JSON.stringify({ event: 'order_updated', data: updated }));
+
+    // Send status update notification immediately (non-blocking)
+    this.notificationService.sendOrderStatusUpdate(id, dto.status).catch(err => 
+      this.logger.error('Failed to send order status notification', err)
+    );
 
     return updated;
   }

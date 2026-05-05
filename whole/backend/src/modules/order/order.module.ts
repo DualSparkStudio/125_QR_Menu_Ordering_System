@@ -4,9 +4,10 @@ import { OrderService } from './order.service';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { RedisModule } from '../../common/redis/redis.module';
 import { PaymentModule } from '../payment/payment.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, RedisModule, forwardRef(() => PaymentModule)],
+  imports: [PrismaModule, RedisModule, NotificationModule, forwardRef(() => PaymentModule)],
   controllers: [OrderController],
   providers: [OrderService],
   exports: [OrderService],

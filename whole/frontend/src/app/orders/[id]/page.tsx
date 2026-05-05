@@ -52,7 +52,7 @@ function OrderContent() {
       catch { router.push('/'); } finally { setLoading(false); }
     };
     load();
-    const interval = setInterval(load, 10000);
+    const interval = setInterval(load, 2000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -121,17 +121,20 @@ function OrderContent() {
 
       <div className="max-w-2xl mx-auto px-4 pt-5 pb-10 space-y-4">
         {/* Confirmation banner */}
-        {isNew && !isCancelled && (
+        {isNew && !isCancelled && !isCompleted && (
           <div className="card p-6 text-center border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 shadow-lg shadow-orange-100 slide-up">
             <div className="text-5xl mb-3">{isPaid ? '🎊' : '🎉'}</div>
             <h2 className="text-2xl font-black text-stone-900 mb-1">{isPaid ? 'Payment Successful!' : 'Order Confirmed!'}</h2>
             <p className="text-stone-500 text-sm">{isPaid ? `₹${order.totalAmount?.toFixed(0)} paid · Your food is being prepared` : 'Sit back and relax — your order is in the kitchen'}</p>
-            {isPaid && (
-              <div className="mt-3 inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
-                <span className="text-green-500 text-sm">✓</span>
-                <span className="text-green-600 text-xs font-semibold">Verified by Razorpay</span>
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Completed order banner */}
+        {isCompleted && !isCancelled && (
+          <div className="card p-6 text-center border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-lg shadow-green-100 slide-up">
+            <div className="text-5xl mb-3">✨</div>
+            <h2 className="text-2xl font-black text-stone-900 mb-1">Order Completed!</h2>
+            <p className="text-stone-500 text-sm">Hope you enjoyed your meal</p>
           </div>
         )}
 
@@ -214,7 +217,7 @@ function OrderContent() {
           </div>
           <div className="mt-3">
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${isPaidOrder ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-              {isPaidOrder ? '✓ Paid via Razorpay' : '⏳ Pay at table'}
+              {isPaidOrder ? '✓ Paid' : '⏳ Pay at table'}
             </span>
           </div>
         </div>

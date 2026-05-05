@@ -269,19 +269,6 @@ export default function CartPage() {
 
         {/* Bill */}
         <div className="card p-5 shadow-sm shadow-orange-50">
-          {/* Restaurant Details Header */}
-          {restaurant && (
-            <div className="text-center border-b border-orange-100 pb-4 mb-4">
-              <h2 className="font-black text-stone-900 text-lg mb-1">{restaurant.name}</h2>
-              {restaurant.address && (
-                <p className="text-stone-500 text-xs">{restaurant.address}</p>
-              )}
-              {restaurant.phone && (
-                <p className="text-stone-500 text-xs mt-0.5">📞 {restaurant.phone}</p>
-              )}
-            </div>
-          )}
-
           <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-4">Bill Summary</h3>
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">{currency}{subtotal.toFixed(2)}</span></div>

@@ -108,7 +108,7 @@ function HomeContent() {
 
         {/* Features */}
         <div className="flex gap-8 mt-8 slide-up" style={{ animationDelay: '0.2s' }}>
-          {[['⚡', 'Instant Order'], ['🔒', 'Secure Pay'], ['🍽️', 'Table Service']].map(([icon, label]) => (
+          {[['⚡', 'Instant Order'], ['🍽️', 'Table Service']].map(([icon, label]) => (
             <div key={label} className="text-center">
               <div className="text-xl mb-1">{icon}</div>
               <p className="text-stone-400 text-xs font-semibold">{label}</p>
