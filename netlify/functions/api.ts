@@ -339,11 +339,24 @@ export const handler: Handler = async (event) => {
       const restaurant = await getPrisma().restaurant.findUnique({ where: { id: p.restaurantId } });
       if (!restaurant) return json(404, { message: 'Restaurant not found' });
 
-      // Calculate totals
+      // Fetch menu items and calculate totals
+      const itemsWithPrices = [];
       let subtotal = 0;
+      
       for (const item of items) {
         const menuItem = await getPrisma().menuItem.findUnique({ where: { id: item.menuItemId } });
-        if (menuItem) subtotal += menuItem.basePrice * item.quantity;
+        if (!menuItem) continue;
+        
+        const price = menuItem.basePrice;
+        subtotal += price * item.quantity;
+        
+        itemsWithPrices.push({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          price: price,
+          selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
+          specialInstructions: item.specialInstructions,
+        });
       }
 
       const taxAmount = subtotal * (restaurant.taxPercentage / 100);
@@ -390,13 +403,7 @@ export const handler: Handler = async (event) => {
           couponId,
           couponCode,
           items: {
-            create: items.map((item: any) => ({
-              menuItemId: item.menuItemId,
-              quantity: item.quantity,
-              price: item.price,
-              selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
-              specialInstructions: item.specialInstructions,
-            })),
+            create: itemsWithPrices,
           },
         },
         include: {
