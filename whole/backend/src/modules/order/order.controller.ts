@@ -24,8 +24,11 @@ export class OrderController {
 
   // Guest: get active orders for table
   @Get('tables/:tableId/orders/active')
-  getActiveOrders(@Param('tableId') tableId: string) {
-    return this.service.getActiveOrdersForTable(tableId);
+  getActiveOrders(
+    @Param('tableId') tableId: string,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    return this.service.getActiveOrdersForTable(tableId, sessionId);
   }
 
   // Admin: get all orders
@@ -76,5 +79,15 @@ export class OrderController {
   @UseGuards(JwtAuthGuard)
   markAsPaid(@Param('id') id: string) {
     return this.service.markAsPaid(id);
+  }
+
+  // Update individual item status
+  @Put('order-items/:itemId/status')
+  @UseGuards(JwtAuthGuard)
+  updateItemStatus(
+    @Param('itemId') itemId: string,
+    @Body('status') status: string,
+  ) {
+    return this.service.updateItemStatus(itemId, status);
   }
 }

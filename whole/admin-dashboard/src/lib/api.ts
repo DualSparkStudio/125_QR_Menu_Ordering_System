@@ -121,6 +121,8 @@ export const adminApi = {
   // Mark as paid
   markAsPaid: (id: string, token: string) =>
     req(`/orders/${id}/mark-paid`, { method: 'PUT' }, token),
+  updateItemStatus: (itemId: string, status: string, token: string) =>
+    req(`/order-items/${itemId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }, token),
 
   // Reports
   getSalesReport: (restaurantId: string, token: string, startDate: string, endDate: string) =>

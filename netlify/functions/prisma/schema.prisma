@@ -186,6 +186,7 @@ model Order {
   tableId      String
   table        Table  @relation(fields: [tableId], references: [id], onDelete: Cascade)
 
+  sessionId    String? // Session identifier for isolating orders per dining session
   orderNumber  String @unique
 
   // Guest info
@@ -229,6 +230,7 @@ model Order {
 
   @@index([restaurantId])
   @@index([tableId])
+  @@index([sessionId])
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])

@@ -10,6 +10,7 @@ export class OrderItemDto {
 
 export class CreateOrderDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => OrderItemDto) items: OrderItemDto[];
+  @IsOptional() @IsString() sessionId?: string;
   @IsOptional() @IsString() guestName?: string;
   @IsOptional() @IsString() guestPhone?: string;
   @IsOptional() @IsNumber() @Min(1) guestCount?: number;

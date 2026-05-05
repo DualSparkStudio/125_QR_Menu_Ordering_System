@@ -57,7 +57,7 @@ function MenuContent() {
 
     const checkTableStatus = async () => {
       try {
-        const orders: any = await api.getActiveOrders(table.id);
+        const orders: any = await api.getActiveOrders(table.id, sessionId);
         
         // Table is only occupied if there are active orders AND user has never placed an order
         // Once user places an order (hasActiveSession = true), they can continue ordering
@@ -89,7 +89,7 @@ function MenuContent() {
       if (hasRedirected) return;
       
       try {
-        const orders: any = await api.getActiveOrders(table.id);
+        const orders: any = await api.getActiveOrders(table.id, sessionId);
         
         // If no active orders, it means all orders are completed and paid
         if (orders.length === 0) {
@@ -153,10 +153,10 @@ function MenuContent() {
       console.log('No table ID available');
       return;
     }
-    console.log('Loading active orders for table:', table.id);
+    console.log('Loading active orders for table:', table.id, 'session:', sessionId);
     setLoadingOrders(true);
     try {
-      const orders: any = await api.getActiveOrders(table.id);
+      const orders: any = await api.getActiveOrders(table.id, sessionId);
       console.log('Active orders received:', orders);
       setActiveOrders(orders);
     } catch (err) {

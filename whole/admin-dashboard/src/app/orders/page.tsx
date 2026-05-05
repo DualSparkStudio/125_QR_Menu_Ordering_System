@@ -363,15 +363,33 @@ export default function OrdersPage() {
                         {order.guestName && <span>· {order.guestName}</span>}
                         <span>· {new Date(order.createdAt).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="space-y-2">
                         {order.items?.map((item: any) => {
                           const itemAge = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 60000);
                           const isNewItem = itemAge < 2 && !isNew; // New item in existing order
                           return (
-                            <span key={item.id} className={`inline-flex items-center gap-1 ${isNewItem ? 'bg-blue-100 border-blue-300 text-blue-700 font-semibold' : 'bg-gray-50 border-gray-100 text-gray-600'} border text-xs px-2.5 py-1 rounded-lg font-medium`}>
-                              {isNewItem && <span className="text-blue-500">🆕</span>}
-                              <span className="text-gray-400">×{item.quantity}</span> {item.menuItem?.name}
-                            </span>
+                            <div key={item.id} className={`flex items-center gap-2 ${isNewItem ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-100'} rounded-lg p-2`}>
+                              {isNewItem && <span className="text-blue-500 text-xs">🆕</span>}
+                              <span className="text-gray-400 text-xs">×{item.quantity}</span>
+                              <span className="flex-1 text-gray-700 text-xs font-medium">{item.menuItem?.name}</span>
+                              <select
+                                value={item.status || 'pending'}
+                                onChange={(e) => {
+                                  if (!token) return;
+                                  setUpdating(item.id);
+                                  adminApi.updateItemStatus(item.id, e.target.value, token)
+                                    .then(() => load())
+                                    .finally(() => setUpdating(null));
+                                }}
+                                disabled={updating === item.id}
+                                className="text-xs px-2 py-1 rounded border border-gray-200 bg-white cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50"
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="preparing">Preparing</option>
+                                <option value="ready">Ready</option>
+                                <option value="served">Served</option>
+                              </select>
+                            </div>
                           );
                         })}
                       </div>

@@ -74,6 +74,8 @@ export const adminApi = {
     req(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }, token),
   markAsPaid: (id: string, token: string) =>
     req(`/orders/${id}/mark-paid`, { method: 'PUT' }, token),
+  updateItemStatus: (itemId: string, status: string, token: string) =>
+    req(`/order-items/${itemId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }, token),
 
   // Waiter calls
   getWaiterCalls: (restaurantId: string, token: string, status?: string) =>
@@ -123,8 +125,12 @@ export const api = {
   createOrder: (restaurantId: string, tableId: string, data: any) =>
     req(`/restaurants/${restaurantId}/tables/${tableId}/orders`, { method: 'POST', body: JSON.stringify(data) }),
   
-  getActiveOrders: (tableId: string) =>
-    req(`/tables/${tableId}/orders/active`),
+  getActiveOrders: (tableId: string, sessionId?: string) => {
+    const url = sessionId 
+      ? `/tables/${tableId}/orders/active?sessionId=${encodeURIComponent(sessionId)}`
+      : `/tables/${tableId}/orders/active`;
+    return req(url);
+  },
   
   getOrder: (orderId: string) =>
     req(`/orders/${orderId}`),

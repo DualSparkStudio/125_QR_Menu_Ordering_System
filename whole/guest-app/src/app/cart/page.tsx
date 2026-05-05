@@ -20,7 +20,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 
 export default function CartPage() {
   const router = useRouter();
-  const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession } = useCartStore();
+  const { cart, updateQuantity, clearCart, getTotal, tableId, restaurantId, setActiveSession, sessionId } = useCartStore();
   const { restaurant, table } = useRestaurantStore();
   const { setCurrentOrder } = useOrderStore();
 
@@ -49,10 +49,10 @@ export default function CartPage() {
   // Load existing orders on mount
   useEffect(() => {
     const loadExistingOrders = async () => {
-      if (!tableId) return;
+      if (!tableId || !sessionId) return;
       setLoadingExisting(true);
       try {
-        const orders: any = await api.getActiveOrders(tableId);
+        const orders: any = await api.getActiveOrders(tableId, sessionId);
         setExistingOrders(orders);
       } catch (err) {
         console.error('Failed to load existing orders:', err);
@@ -62,7 +62,7 @@ export default function CartPage() {
       }
     };
     loadExistingOrders();
-  }, [tableId]);
+  }, [tableId, sessionId]);
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     // OPTIMISTIC UPDATE - Update UI instantly
@@ -99,7 +99,7 @@ export default function CartPage() {
     guestCount: 1,
     specialInstructions: instructions || undefined,
     couponCode: couponApplied ? couponCode : undefined,
-    sessionId: useCartStore.getState().sessionId,
+    sessionId: sessionId,
   });
 
   const handlePayLater = async () => {

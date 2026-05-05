@@ -25,10 +25,11 @@ export class OrderService {
     if (!restaurant) throw new NotFoundException('Restaurant not found');
     if (!restaurant.isOpen) throw new BadRequestException('Restaurant is currently closed');
 
-    // Check for existing active order on this table
+    // Check for existing active order on this table AND session
     const existingOrder = await this.prisma.order.findFirst({
       where: {
         tableId,
+        sessionId: dto.sessionId || null,
         status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
       },
       orderBy: { createdAt: 'desc' },
@@ -86,7 +87,7 @@ export class OrderService {
 
     const order = await this.prisma.order.create({
       data: {
-        restaurantId, tableId, orderNumber,
+        restaurantId, tableId, sessionId: dto.sessionId, orderNumber,
         guestName: dto.guestName, guestPhone: dto.guestPhone, guestCount: dto.guestCount || 1,
         specialInstructions: dto.specialInstructions,
         subtotal, taxAmount, serviceCharge, discountAmount, totalAmount,
@@ -285,9 +286,19 @@ export class OrderService {
     return updated;
   }
 
-  async getActiveOrdersForTable(tableId: string) {
+  async getActiveOrdersForTable(tableId: string, sessionId?: string) {
+    const where: any = { 
+      tableId, 
+      status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] } 
+    };
+    
+    // If sessionId provided, filter by it
+    if (sessionId) {
+      where.sessionId = sessionId;
+    }
+    
     return this.prisma.order.findMany({
-      where: { tableId, status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] } },
+      where,
       include: { items: { include: { menuItem: true } } },
       orderBy: { createdAt: 'desc' },
     });
@@ -333,6 +344,28 @@ export class OrderService {
     await this.redis.publish(`table:${order.tableId}`, JSON.stringify({ 
       event: 'payment_completed', 
       data: { orderId, tableId: order.tableId } 
+    }));
+
+    return updated;
+  }
+
+  async updateItemStatus(itemId: string, status: string) {
+    const item = await this.prisma.orderItem.findUnique({
+      where: { id: itemId },
+      include: { order: { include: { restaurant: true } } },
+    });
+
+    if (!item) throw new NotFoundException('Order item not found');
+
+    const updated = await this.prisma.orderItem.update({
+      where: { id: itemId },
+      data: { status },
+    });
+
+    // Publish event
+    await this.redis.publish(`restaurant:${item.order.restaurantId}`, JSON.stringify({ 
+      event: 'item_updated', 
+      data: { itemId, orderId: item.orderId, status } 
     }));
 
     return updated;
