@@ -152,7 +152,6 @@ export default function OrdersPage() {
                           );
                         })}
                       </div>
-                      </div>
                       {order.specialInstructions && (
                         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 mt-2">
                           📝 {order.specialInstructions}
