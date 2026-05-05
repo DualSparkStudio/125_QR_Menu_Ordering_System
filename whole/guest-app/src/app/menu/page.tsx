@@ -59,8 +59,9 @@ function MenuContent() {
       try {
         const orders: any = await api.getActiveOrders(table.id);
         
-        // If there are active orders AND user doesn't have an active session, table is occupied
-        if (orders.length > 0 && !hasActiveSession) {
+        // Table is only occupied if there are active orders AND user has never placed an order
+        // Once user places an order (hasActiveSession = true), they can continue ordering
+        if (orders.length > 0 && !hasActiveSession && getItemCount() === 0) {
           setTableOccupied(true);
           setOccupiedByOther(true);
         } else {
@@ -76,7 +77,7 @@ function MenuContent() {
     // Check every 10 seconds (reduced frequency)
     const interval = setInterval(checkTableStatus, 10000);
     return () => clearInterval(interval);
-  }, [table?.id, hasActiveSession]);
+  }, [table?.id, hasActiveSession, getItemCount]);
 
   // Listen for payment completion events - ONLY if user has active session
   useEffect(() => {
