@@ -70,7 +70,7 @@ interface RestaurantStore {
   setError: (e: string | null) => void;
 }
 
-const CACHE_DURATION = 300000; // 5 minutes cache (increased from 1 minute)
+const CACHE_DURATION = 60000; // 1 minute cache (reduced for faster updates)
 const STORAGE_KEY = 'menu-cache';
 
 // Load cache from localStorage

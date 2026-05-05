@@ -115,9 +115,9 @@ export const adminApi = {
 
 // Guest API (public endpoints)
 export const api = {
-  // Menu
+  // Menu - add cache buster to force fresh data
   getCategories: (restaurantId: string) =>
-    req(`/restaurants/${restaurantId}/menu/categories`),
+    req(`/restaurants/${restaurantId}/menu/categories?v=${Date.now()}`),
   
   // Orders
   createOrder: (restaurantId: string, tableId: string, data: any) =>

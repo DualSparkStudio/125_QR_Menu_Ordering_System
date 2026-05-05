@@ -250,8 +250,8 @@ export const handler: Handler = async (event) => {
         },
         orderBy: { displayOrder: 'asc' },
       });
-      // Cache for 5 minutes (public data that doesn't change often)
-      return json(200, cats, 'public, max-age=300, s-maxage=300, stale-while-revalidate=600');
+      // Cache for 1 minute (reduced from 5 for faster updates)
+      return json(200, cats, 'public, max-age=60, s-maxage=60, stale-while-revalidate=120');
     }
 
     p = matchPath('/restaurants/:restaurantId/menu/categories/admin', rawPath);
