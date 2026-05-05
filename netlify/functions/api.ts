@@ -170,6 +170,30 @@ export const handler: Handler = async (event) => {
     }
 
     // ── TABLES ────────────────────────────────────────────────────────────
+    // Public route: Get table by QR code
+    p = matchPath('/tables/qr/:code', rawPath);
+    if (p && method === 'GET') {
+      const table = await getPrisma().table.findFirst({
+        where: { qrCode: p.code, isActive: true },
+        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true } } },
+      });
+      if (!table) return json(404, { message: 'Table not found' });
+      return json(200, table);
+    }
+
+    // Public route: Get table by table number
+    p = matchPath('/tables/number/:tableNumber', rawPath);
+    if (p && method === 'GET') {
+      const tableNumber = parseInt(p.tableNumber, 10);
+      if (isNaN(tableNumber)) return json(400, { message: 'Invalid table number' });
+      const table = await getPrisma().table.findFirst({
+        where: { tableNumber, isActive: true },
+        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true } } },
+      });
+      if (!table) return json(404, { message: 'Table not found' });
+      return json(200, table);
+    }
+
     p = matchPath('/restaurants/:restaurantId/tables', rawPath);
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
