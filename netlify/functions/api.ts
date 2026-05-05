@@ -316,11 +316,18 @@ export const handler: Handler = async (event) => {
     // Public route: Get active orders for a table
     p = matchPath('/tables/:tableId/orders/active', rawPath);
     if (p && method === 'GET') {
+      const where: any = {
+        tableId: p.tableId,
+        status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+      };
+      
+      // Filter by sessionId if provided
+      if (q.sessionId) {
+        where.sessionId = q.sessionId;
+      }
+      
       const orders = await getPrisma().order.findMany({
-        where: {
-          tableId: p.tableId,
-          status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
-        },
+        where,
         include: {
           items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
           table: { select: { id: true, tableNumber: true, section: true } },
@@ -333,12 +340,73 @@ export const handler: Handler = async (event) => {
     // Public route: Create order for a table
     p = matchPath('/restaurants/:restaurantId/tables/:tableId/orders', rawPath);
     if (p && method === 'POST') {
-      const { items, guestName, guestPhone, guestCount, specialInstructions, couponCode } = body;
+      const { items, guestName, guestPhone, guestCount, specialInstructions, couponCode, sessionId } = body;
       
       // Get restaurant for tax/service charge
       const restaurant = await getPrisma().restaurant.findUnique({ where: { id: p.restaurantId } });
       if (!restaurant) return json(404, { message: 'Restaurant not found' });
 
+      // Check for existing active order with same tableId and sessionId
+      const existingOrder = await getPrisma().order.findFirst({
+        where: {
+          tableId: p.tableId,
+          sessionId: sessionId || null,
+          status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // If existing order found, add items to it instead of creating new order
+      if (existingOrder) {
+        // Fetch menu items and calculate additional subtotal
+        const itemsWithPrices = [];
+        let additionalSubtotal = 0;
+        
+        for (const item of items) {
+          const menuItem = await getPrisma().menuItem.findUnique({ where: { id: item.menuItemId } });
+          if (!menuItem) continue;
+          
+          const price = menuItem.basePrice;
+          additionalSubtotal += price * item.quantity;
+          
+          itemsWithPrices.push({
+            orderId: existingOrder.id,
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            price: price,
+            selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
+            specialInstructions: item.specialInstructions,
+          });
+        }
+
+        // Add new items to existing order
+        await getPrisma().orderItem.createMany({ data: itemsWithPrices });
+
+        // Recalculate totals
+        const newSubtotal = existingOrder.subtotal + additionalSubtotal;
+        const newTaxAmount = newSubtotal * (restaurant.taxPercentage / 100);
+        const newServiceCharge = newSubtotal * (restaurant.serviceChargePercentage / 100);
+        const newTotalAmount = newSubtotal + newTaxAmount + newServiceCharge - existingOrder.discountAmount;
+
+        // Update order with new totals
+        const updatedOrder = await getPrisma().order.update({
+          where: { id: existingOrder.id },
+          data: {
+            subtotal: newSubtotal,
+            taxAmount: newTaxAmount,
+            serviceCharge: newServiceCharge,
+            totalAmount: newTotalAmount,
+          },
+          include: {
+            items: { include: { menuItem: true } },
+            table: true,
+          },
+        });
+
+        return json(200, updatedOrder);
+      }
+
+      // No existing order - create new one
       // Fetch menu items and calculate totals
       const itemsWithPrices = [];
       let subtotal = 0;
@@ -390,6 +458,7 @@ export const handler: Handler = async (event) => {
         data: {
           restaurantId: p.restaurantId,
           tableId: p.tableId,
+          sessionId: sessionId || null,
           orderNumber,
           guestName,
           guestPhone,
