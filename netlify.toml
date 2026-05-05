@@ -4,9 +4,15 @@
   publish = ".next"
 
 [functions]
-  directory = "netlify/functions"
+  directory = "../../netlify/functions"
   node_bundler = "esbuild"
-  external_node_modules = ["@prisma/client"]
+  external_node_modules = [
+    "@prisma/client",
+    ".prisma/client",
+    "bcryptjs",
+    "jsonwebtoken",
+    "uuid"
+  ]
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
@@ -16,196 +22,21 @@
   NPM_VERSION = "9"
 
 [[redirects]]
-  from = "/api/push/subscribe"
-  to = "/.netlify/functions/push-subscribe"
-  status = 200
-
-[[redirects]]
-  from = "/api/push/send"
-  to = "/.netlify/functions/push-send"
-  status = 200
-
-[[redirects]]
   from = "/api/auth/staff/login"
-  to = "/.netlify/functions/auth-staff-login"
+  to = "/.netlify/functions/api/auth/staff/login"
   status = 200
 
 [[redirects]]
   from = "/api/auth/table/session"
-  to = "/.netlify/functions/auth-table-session"
+  to = "/.netlify/functions/api/auth/table/session"
   status = 200
 
 [[redirects]]
   from = "/api/auth/refresh"
-  to = "/.netlify/functions/auth-refresh"
+  to = "/.netlify/functions/api/auth/refresh"
   status = 200
 
 [[redirects]]
-  from = "/api/restaurants/:restaurantId/menu/categories/admin"
-  to = "/.netlify/functions/menu-categories"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/menu/categories"
-  to = "/.netlify/functions/menu-categories"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/menu/categories/:id"
-  to = "/.netlify/functions/menu-category"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/menu/items"
-  to = "/.netlify/functions/menu-items"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/menu/items/:id/toggle-availability"
-  to = "/.netlify/functions/menu-item"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/menu/items/:id"
-  to = "/.netlify/functions/menu-item"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/tables/:tableId/orders"
-  to = "/.netlify/functions/orders-create"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/orders"
-  to = "/.netlify/functions/orders-list"
-  status = 200
-
-[[redirects]]
-  from = "/api/tables/:tableId/orders/active"
-  to = "/.netlify/functions/orders-active"
-  status = 200
-
-[[redirects]]
-  from = "/api/orders/:id/status"
-  to = "/.netlify/functions/orders-update-status"
-  status = 200
-
-[[redirects]]
-  from = "/api/orders/:id/mark-paid"
-  to = "/.netlify/functions/orders-mark-paid"
-  status = 200
-
-[[redirects]]
-  from = "/api/orders/:id"
-  to = "/.netlify/functions/orders-get"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/tables"
-  to = "/.netlify/functions/tables"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/tables/:id/status"
-  to = "/.netlify/functions/tables-update"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/tables/:id/regenerate-qr"
-  to = "/.netlify/functions/tables-update"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/tables/:id"
-  to = "/.netlify/functions/tables-update"
-  status = 200
-
-[[redirects]]
-  from = "/api/tables/qr/:qrCode"
-  to = "/.netlify/functions/tables-qr"
-  status = 200
-
-[[redirects]]
-  from = "/api/tables/number/:tableNumber"
-  to = "/.netlify/functions/tables-by-number"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/coupons/validate"
-  to = "/.netlify/functions/coupons"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/coupons"
-  to = "/.netlify/functions/coupons"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/coupons/:id/toggle"
-  to = "/.netlify/functions/coupon-toggle"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/coupons/:id"
-  to = "/.netlify/functions/coupon-toggle"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/reviews/stats"
-  to = "/.netlify/functions/reviews"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/reviews/orders/:orderId"
-  to = "/.netlify/functions/reviews"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:restaurantId/reviews"
-  to = "/.netlify/functions/reviews"
-  status = 200
-
-[[redirects]]
-  from = "/api/payments/razorpay/create/:orderId"
-  to = "/.netlify/functions/payments-razorpay-create"
-  status = 200
-
-[[redirects]]
-  from = "/api/payments/razorpay/verify"
-  to = "/.netlify/functions/payments-razorpay-verify"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/restaurants/:restaurantId/dashboard"
-  to = "/.netlify/functions/admin-dashboard"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/restaurants/:restaurantId/revenue"
-  to = "/.netlify/functions/admin-revenue"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/restaurants/:restaurantId/staff"
-  to = "/.netlify/functions/admin-staff"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/restaurants/:restaurantId/staff/:id"
-  to = "/.netlify/functions/admin-staff"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/slug/:slug"
-  to = "/.netlify/functions/restaurants"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants/:id"
-  to = "/.netlify/functions/restaurants"
-  status = 200
-
-[[redirects]]
-  from = "/api/restaurants"
-  to = "/.netlify/functions/restaurants"
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
   status = 200
