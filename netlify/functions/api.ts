@@ -404,6 +404,23 @@ export const handler: Handler = async (event) => {
         },
       });
 
+      // Create notification for new order
+      try {
+        await getPrisma().notification.create({
+          data: {
+            restaurantId: p.restaurantId,
+            orderId: order.id,
+            type: 'order_placed',
+            title: 'New Order',
+            message: `New order #${orderNumber.slice(-8)} from Table ${order.table.tableNumber}`,
+            status: 'pending',
+          },
+        });
+      } catch (notifErr) {
+        console.error('Failed to create notification:', notifErr);
+        // Don't fail the order if notification fails
+      }
+
       return json(200, order);
     }
 
@@ -446,7 +463,39 @@ export const handler: Handler = async (event) => {
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
       const { status } = body;
-      const updated = await getPrisma().order.update({ where: { id: p.id }, data: { status } });
+      const updated = await getPrisma().order.update({ 
+        where: { id: p.id }, 
+        data: { status },
+        include: { table: true }
+      });
+
+      // Create notification for status change
+      try {
+        const statusMessages: Record<string, string> = {
+          confirmed: 'Order confirmed',
+          preparing: 'Order is being prepared',
+          ready: 'Order is ready',
+          served: 'Order has been served',
+          completed: 'Order completed',
+          cancelled: 'Order cancelled',
+        };
+
+        if (statusMessages[status]) {
+          await getPrisma().notification.create({
+            data: {
+              restaurantId: updated.restaurantId,
+              orderId: updated.id,
+              type: 'order_status',
+              title: statusMessages[status],
+              message: `Order #${updated.orderNumber.slice(-8)} - ${statusMessages[status]}`,
+              status: 'pending',
+            },
+          });
+        }
+      } catch (notifErr) {
+        console.error('Failed to create notification:', notifErr);
+      }
+
       return json(200, updated);
     }
 
@@ -540,6 +589,30 @@ export const handler: Handler = async (event) => {
       if (!token) return json(401, { message: 'Unauthorized' });
       const reviews = await getPrisma().review.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
       return json(200, reviews);
+    }
+
+    // ── NOTIFICATIONS ─────────────────────────────────────────────────────
+    p = matchPath('/restaurants/:restaurantId/notifications', rawPath);
+    if (p && method === 'GET') {
+      if (!token) return json(401, { message: 'Unauthorized' });
+      const limit = q.limit ? parseInt(q.limit) : 50;
+      const notifications = await getPrisma().notification.findMany({
+        where: { restaurantId: p.restaurantId },
+        include: { order: { select: { orderNumber: true, table: { select: { tableNumber: true } } } } },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
+      return json(200, notifications);
+    }
+
+    p = matchPath('/notifications/:id/mark-read', rawPath);
+    if (p && method === 'PUT') {
+      if (!token) return json(401, { message: 'Unauthorized' });
+      const updated = await getPrisma().notification.update({
+        where: { id: p.id },
+        data: { status: 'sent', sentAt: new Date() },
+      });
+      return json(200, updated);
     }
 
     // ── REPORTS ───────────────────────────────────────────────────────────
