@@ -288,12 +288,12 @@ export default function OrdersPage() {
           <p>Visit again soon</p>
         </div>
 
-        <script>
+        <scr` + `ipt>
           window.onload = () => {
             window.print();
             window.onafterprint = () => window.close();
           };
-        </script>
+        </scr` + `ipt>
       </body>
       </html>
     `;
