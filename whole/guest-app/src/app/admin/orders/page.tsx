@@ -36,18 +36,12 @@ export default function OrdersPage() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(new Set());
 
-  // Restore auth from localStorage on mount
+  // Restore auth from localStorage on mount - handled by zustand persist
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('admin-auth');
-      if (stored) {
-        const data = JSON.parse(stored);
-        useAuthStore.setState({ staff: data.staff, token: data.token });
-      }
+    if (!loading && !isAuthenticated) {
+      window.location.href = '/admin';
     }
-  }, []);
-
-  const load = async () => {
+  }, [isAuthenticated, loading]);
     if (!staff?.restaurantId || !token) {
       setLoading(false);
       return;
@@ -73,14 +67,7 @@ export default function OrdersPage() {
     return () => clearInterval(t); 
   }, [filter, staff, token]);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !token) {
-      window.location.href = '/admin';
-    }
-  }, [token, loading]);
-
-  // Set up realtime notifications
+  const load = async () => {
   useRealtimeNotifications({
     restaurantId: staff?.restaurantId,
     userType: 'admin',
@@ -328,7 +315,7 @@ export default function OrdersPage() {
   }
 
   // Show message if not authenticated
-  if (!token || !staff) {
+  if (!isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
