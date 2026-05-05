@@ -184,10 +184,8 @@ export const handler: Handler = async (event) => {
     // Public route: Get table by table number
     p = matchPath('/tables/number/:tableNumber', rawPath);
     if (p && method === 'GET') {
-      const tableNumber = parseInt(p.tableNumber, 10);
-      if (isNaN(tableNumber)) return json(400, { message: 'Invalid table number' });
       const table = await getPrisma().table.findFirst({
-        where: { tableNumber, isActive: true },
+        where: { tableNumber: p.tableNumber, isActive: true },
         include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true } } },
       });
       if (!table) return json(404, { message: 'Table not found' });
