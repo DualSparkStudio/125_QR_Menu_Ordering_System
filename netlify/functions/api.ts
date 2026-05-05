@@ -229,7 +229,7 @@ export const handler: Handler = async (event) => {
         where: { restaurantId: p.restaurantId, isActive: true },
         include: { 
           items: { 
-            where: { isAvailable: true }, 
+            // Don't filter by isAvailable - let frontend handle it
             orderBy: { displayOrder: 'asc' },
             select: {
               id: true,
@@ -244,6 +244,7 @@ export const handler: Handler = async (event) => {
               isFeatured: true,
               preparationTime: true,
               displayOrder: true,
+              isAvailable: true, // Include availability status
             }
           } 
         },
