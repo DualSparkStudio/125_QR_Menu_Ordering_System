@@ -25,6 +25,7 @@ export const handler: Handler = async (event) => {
           id: true,
           email: true,
           name: true,
+          phone: true,
           role: true,
           isActive: true,
           createdAt: true,
@@ -37,10 +38,10 @@ export const handler: Handler = async (event) => {
 
     if (event.httpMethod === 'POST') {
       // POST /admin/restaurants/:restaurantId/staff
-      const { email, name, password, role } = JSON.parse(event.body || '{}');
+      const { email, name, phone, password, role } = JSON.parse(event.body || '{}');
 
-      if (!email || !name || !password) {
-        return error('Email, name, and password are required', 400);
+      if (!email || !name || !password || !phone) {
+        return error('Email, name, phone, and password are required', 400);
       }
 
       const existing = await prisma.staff.findFirst({
@@ -55,6 +56,7 @@ export const handler: Handler = async (event) => {
           restaurantId,
           email,
           name,
+          phone,
           passwordHash,
           role: role || 'staff',
         },
@@ -62,6 +64,7 @@ export const handler: Handler = async (event) => {
           id: true,
           email: true,
           name: true,
+          phone: true,
           role: true,
           isActive: true,
           createdAt: true,
@@ -81,6 +84,7 @@ export const handler: Handler = async (event) => {
       const updateData: any = {};
       if (body.name) updateData.name = body.name;
       if (body.email) updateData.email = body.email;
+      if (body.phone) updateData.phone = body.phone;
       if (body.role) updateData.role = body.role;
       if (body.isActive !== undefined) updateData.isActive = body.isActive;
       if (body.password) {
@@ -94,6 +98,7 @@ export const handler: Handler = async (event) => {
           id: true,
           email: true,
           name: true,
+          phone: true,
           role: true,
           isActive: true,
           createdAt: true,
