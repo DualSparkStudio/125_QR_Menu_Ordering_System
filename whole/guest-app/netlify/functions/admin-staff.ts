@@ -20,7 +20,7 @@ export const handler: Handler = async (event) => {
     if (event.httpMethod === 'GET') {
       // GET /admin/restaurants/:restaurantId/staff
       const staff = await prisma.staff.findMany({
-        where: { restaurantId, deletedAt: null },
+        where: { restaurantId, isActive: true },
         select: {
           id: true,
           email: true,
@@ -44,7 +44,7 @@ export const handler: Handler = async (event) => {
       }
 
       const existing = await prisma.staff.findFirst({
-        where: { email, deletedAt: null },
+        where: { email, isActive: true },
       });
       if (existing) return error('Email already exists', 400);
 
@@ -110,7 +110,7 @@ export const handler: Handler = async (event) => {
 
       await prisma.staff.update({
         where: { id: staffId },
-        data: { deletedAt: new Date() },
+        data: { isActive: false },
       });
 
       return success({ message: 'Staff deleted' });
