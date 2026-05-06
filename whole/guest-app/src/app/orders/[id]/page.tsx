@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Link from 'next/link';
-import { initializeNotifications } from '../../../../../shared/notificationUtils';
+import { initializeNotifications, showNotification } from '../../../../../shared/notificationUtils';
 
 const STEPS = [
   { key: 'pending',   label: 'Order Placed',  icon: '📋', desc: 'We received your order' },
