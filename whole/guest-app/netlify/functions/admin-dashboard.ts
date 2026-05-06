@@ -45,9 +45,13 @@ export const handler: Handler = async (event) => {
       prisma.waiterCall.count({ where: { restaurantId, status: 'pending' } }),
       prisma.review.aggregate({ 
         where: { restaurantId }, 
-        _avg: { rating: true, foodRating: true, serviceRating: true } 
+        _avg: { foodRating: true, serviceRating: true } 
       }),
     ]);
+
+    const foodRating = avgRatings._avg.foodRating || 0;
+    const serviceRating = avgRatings._avg.serviceRating || 0;
+    const overallRating = (foodRating + serviceRating) / 2;
 
     return success({
       tables: {
@@ -65,9 +69,9 @@ export const handler: Handler = async (event) => {
         today: todayRevenue._sum.totalAmount || 0,
       },
       ratings: {
-        overall: avgRatings._avg.rating || 0,
-        food: avgRatings._avg.foodRating || 0,
-        service: avgRatings._avg.serviceRating || 0,
+        overall: overallRating,
+        food: foodRating,
+        service: serviceRating,
       },
       waiterCalls: {
         pending: pendingWaiterCalls,
