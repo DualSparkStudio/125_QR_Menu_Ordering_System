@@ -7,6 +7,8 @@ import { useRestaurantStore } from '@/store/restaurantStore';
 import { useOrderStore } from '@/store/orderStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
+import { showNotification } from '../../../../shared/notificationUtils';
+import { calculateOrderTotals } from '../../../../shared/orderUtils';
 
 declare global { interface Window { Razorpay: any; } }
 
@@ -37,9 +39,9 @@ export default function CartPage() {
   const [loadingExisting, setLoadingExisting] = useState(true);
 
   const subtotal = getTotal();
-  const tax = restaurant ? (subtotal * restaurant.taxPercentage) / 100 : 0;
-  const serviceCharge = restaurant ? (subtotal * restaurant.serviceChargePercentage) / 100 : 0;
-  const total = subtotal + tax + serviceCharge - couponDiscount;
+  const { taxAmount: tax, serviceCharge, totalAmount: total } = restaurant 
+    ? calculateOrderTotals(subtotal, restaurant.taxPercentage, restaurant.serviceChargePercentage, couponDiscount)
+    : { taxAmount: 0, serviceCharge: 0, totalAmount: subtotal };
   const currency = '₹';
 
   // Calculate existing order total
@@ -109,6 +111,13 @@ export default function CartPage() {
       const order: any = await api.createOrder(restaurantId, tableId, createPayload());
       setCurrentOrder(order);
       setActiveSession(true);
+      
+      // Show browser notification
+      showNotification({
+        title: '🎉 Order Placed!',
+        body: `Order #${order.orderNumber?.slice(-6)} has been placed successfully`,
+        icon: '/icon.png',
+      });
       
       // Navigate first, then clear cart to avoid flash
       router.push(`/orders/${order.id}?new=1`);

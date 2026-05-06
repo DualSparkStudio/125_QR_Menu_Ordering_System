@@ -36,6 +36,33 @@ export class NotificationService {
     });
   }
 
+  async sendOrderUpdate(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { restaurant: true, table: true },
+    });
+    if (!order) return;
+
+    const message = `Your order #${order.orderNumber} has been updated at ${order.restaurant.name} (Table ${order.table.tableNumber}). New Total: ${order.restaurant.currency} ${order.totalAmount.toFixed(2)}`;
+
+    if (order.guestPhone) {
+      await this.sendWhatsApp(order.guestPhone, message);
+    }
+
+    await this.prisma.notification.create({
+      data: {
+        restaurantId: order.restaurantId,
+        orderId: order.id,
+        type: 'order_updated',
+        title: 'Order Updated',
+        message,
+        recipientPhone: order.guestPhone || undefined,
+        status: 'sent',
+        sentAt: new Date(),
+      },
+    });
+  }
+
   async sendOrderStatusUpdate(orderId: string, status: string) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId }, include: { restaurant: true } });
     if (!order || !order.guestPhone) return;

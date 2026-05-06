@@ -2,7 +2,7 @@ import { Handler, HandlerEvent } from '@netlify/functions';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { v4 as uuidv4 } from 'uuid';
+import { generateOrderNumber, calculateOrderTotals } from '../../whole/shared/orderUtils';
 
 let prisma: PrismaClient;
 
@@ -384,9 +384,12 @@ export const handler: Handler = async (event) => {
 
         // Recalculate totals
         const newSubtotal = existingOrder.subtotal + additionalSubtotal;
-        const newTaxAmount = newSubtotal * (restaurant.taxPercentage / 100);
-        const newServiceCharge = newSubtotal * (restaurant.serviceChargePercentage / 100);
-        const newTotalAmount = newSubtotal + newTaxAmount + newServiceCharge - existingOrder.discountAmount;
+        const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, totalAmount: newTotalAmount } = calculateOrderTotals(
+          newSubtotal,
+          restaurant.taxPercentage,
+          restaurant.serviceChargePercentage,
+          existingOrder.discountAmount
+        );
 
         // Update order with new totals
         const updatedOrder = await getPrisma().order.update({
@@ -402,6 +405,23 @@ export const handler: Handler = async (event) => {
             table: true,
           },
         });
+
+        // Create notification for order update (items added)
+        try {
+          await getPrisma().notification.create({
+            data: {
+              restaurantId: p.restaurantId,
+              orderId: updatedOrder.id,
+              type: 'order_updated',
+              title: 'Order Updated',
+              message: `Order #${existingOrder.orderNumber.slice(-8)} updated - ${items.length} item(s) added to Table ${updatedOrder.table.tableNumber}`,
+              status: 'pending',
+            },
+          });
+        } catch (notifErr) {
+          console.error('Failed to create notification:', notifErr);
+          // Don't fail the order if notification fails
+        }
 
         return json(200, updatedOrder);
       }
@@ -427,8 +447,6 @@ export const handler: Handler = async (event) => {
         });
       }
 
-      const taxAmount = subtotal * (restaurant.taxPercentage / 100);
-      const serviceCharge = subtotal * (restaurant.serviceChargePercentage / 100);
       let discountAmount = 0;
       let couponId = null;
 
@@ -448,10 +466,15 @@ export const handler: Handler = async (event) => {
         }
       }
 
-      const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
+      const { taxAmount, serviceCharge, totalAmount } = calculateOrderTotals(
+        subtotal,
+        restaurant.taxPercentage,
+        restaurant.serviceChargePercentage,
+        discountAmount
+      );
 
       // Generate order number
-      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const orderNumber = generateOrderNumber();
 
       // Create order
       const order = await getPrisma().order.create({

@@ -1,4 +1,6 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? '/api' : 'http://localhost:3001');
+import { getApiUrl } from '../../../shared/config';
+
+const BASE = getApiUrl();
 
 async function req<T>(url: string, options?: RequestInit, token?: string): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {

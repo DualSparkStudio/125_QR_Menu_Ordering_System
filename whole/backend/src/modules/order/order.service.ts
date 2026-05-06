@@ -3,7 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { NotificationService } from '../notification/notification.service';
-import { v4 as uuidv4 } from 'uuid';
+import { generateOrderNumber, calculateOrderTotals, getItemStatusFromOrderStatus } from '../../utils/order.utils';
 
 @Injectable()
 export class OrderService {
@@ -80,10 +80,13 @@ export class OrderService {
       }
     }
 
-    const taxAmount = (subtotal * restaurant.taxPercentage) / 100;
-    const serviceCharge = (subtotal * restaurant.serviceChargePercentage) / 100;
-    const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
-    const orderNumber = `ORD-${Date.now()}-${uuidv4().substring(0, 6).toUpperCase()}`;
+    const { taxAmount, serviceCharge, totalAmount } = calculateOrderTotals(
+      subtotal,
+      restaurant.taxPercentage,
+      restaurant.serviceChargePercentage,
+      discountAmount
+    );
+    const orderNumber = generateOrderNumber();
 
     const order = await this.prisma.order.create({
       data: {
@@ -155,9 +158,12 @@ export class OrderService {
 
     // Recalculate totals
     const newSubtotal = order.subtotal + additionalSubtotal;
-    const newTaxAmount = (newSubtotal * order.restaurant.taxPercentage) / 100;
-    const newServiceCharge = (newSubtotal * order.restaurant.serviceChargePercentage) / 100;
-    const newTotalAmount = newSubtotal + newTaxAmount + newServiceCharge - order.discountAmount;
+    const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, totalAmount: newTotalAmount } = calculateOrderTotals(
+      newSubtotal,
+      order.restaurant.taxPercentage,
+      order.restaurant.serviceChargePercentage,
+      order.discountAmount
+    );
 
     const updatedOrder = await this.prisma.order.update({
       where: { id: orderId },
@@ -174,7 +180,7 @@ export class OrderService {
     await this.redis.publish(`restaurant:${order.restaurantId}`, JSON.stringify({ event: 'order_updated', data: updatedOrder }));
 
     // Send notification for items added to existing order
-    this.notificationService.sendOrderConfirmation(updatedOrder.id).catch(err => 
+    this.notificationService.sendOrderUpdate(updatedOrder.id).catch(err => 
       this.logger.error('Failed to send order update notification', err)
     );
 

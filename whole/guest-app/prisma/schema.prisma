@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ============ RESTAURANT (Multi-tenant root) ============
@@ -322,7 +322,6 @@ model Coupon {
   maxDiscount   Float?
   usageLimit    Int?
   usedCount     Int    @default(0)
-  usedBySessions String? // JSON array of sessionIds that have used this coupon
   isActive      Boolean @default(true)
   expiresAt     DateTime?
 
@@ -330,7 +329,6 @@ model Coupon {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deletedAt DateTime?
 
   @@unique([restaurantId, code])
   @@index([restaurantId])
@@ -344,7 +342,7 @@ model Staff {
 
   name         String
   email        String
-  phone        String?
+  phone        String
   role         String // owner, manager, chef, waiter, cashier
   passwordHash String
   isActive     Boolean  @default(true)
@@ -352,9 +350,8 @@ model Staff {
 
   waiterCalls WaiterCall[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([restaurantId, email])
   @@index([restaurantId])
@@ -396,15 +393,12 @@ model Review {
   orderId      String @unique
   order        Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  rating        Int // 1-5
-  foodRating    Int? // 1-5
-  serviceRating Int? // 1-5
-  ambianceRating Int? // 1-5
+  foodRating    Int // 1-5
+  serviceRating Int // 1-5
   comment       String?
   guestName     String?
 
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
+  createdAt DateTime @default(now())
 
   @@index([restaurantId])
 }
@@ -425,26 +419,4 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([userId])
   @@index([createdAt])
-}
-
-// ============ PUSH SUBSCRIPTIONS ============
-model PushSubscription {
-  id           String @id @default(cuid())
-  
-  userId       String  // staffId or sessionId
-  userType     String  // admin or guest
-  restaurantId String? // for admin subscriptions
-  tableId      String? // for guest subscriptions
-  
-  endpoint     String  @unique
-  keys         String  // JSON: { p256dh, auth }
-  
-  isActive     Boolean @default(true)
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  @@index([userId, userType])
-  @@index([restaurantId])
-  @@index([tableId])
 }

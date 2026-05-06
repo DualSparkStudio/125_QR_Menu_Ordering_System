@@ -118,7 +118,7 @@ export const useRestaurantStore = create<RestaurantStore>((set, get) => ({
 
     set({ loading: true, error: null });
     try {
-      const BASE = '/api';
+      const BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
       // Detect if it's a UUID (QR code) or a plain table number
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
       const url = isUUID ? `${BASE}/tables/qr/${code}` : `${BASE}/tables/number/${code}`;

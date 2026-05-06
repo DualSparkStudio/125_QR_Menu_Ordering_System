@@ -7,6 +7,7 @@ import { useRestaurantStore } from '@/store/restaurantStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
+import { showNotification } from '../../../../shared/notificationUtils';
 
 const SPICE = ['', '🌶', '🌶🌶', '🌶🌶🌶'];
 
@@ -99,12 +100,12 @@ function MenuContent() {
           clearSession();
           
           // Show notification
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('Payment Completed!', {
-              body: 'Thank you! Your table is now cleared.',
-              icon: '/icon.png',
-            });
-          }
+          showNotification({
+            title: 'Payment Completed!',
+            body: 'Thank you! Your table is now cleared.',
+            icon: '/icon.png',
+            vibrate: [200, 100, 200],
+          });
           
           // Vibrate
           if ('vibrate' in navigator) {

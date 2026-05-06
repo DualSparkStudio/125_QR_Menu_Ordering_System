@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
-import { v4 as uuidv4 } from 'uuid';
+import { generateOrderNumber, calculateOrderTotals } from '../../../shared/orderUtils';
 
 // Cache invalidation helper
 const invalidateCache = (tableId: string) => {
@@ -115,9 +115,12 @@ export const handler: Handler = async (event) => {
       ]);
 
       const newSubtotal = existingOrder.subtotal + additionalSubtotal;
-      const newTaxAmount = (newSubtotal * restaurant.taxPercentage) / 100;
-      const newServiceCharge = (newSubtotal * restaurant.serviceChargePercentage) / 100;
-      const newTotalAmount = newSubtotal + newTaxAmount + newServiceCharge - existingOrder.discountAmount;
+      const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, totalAmount: newTotalAmount } = calculateOrderTotals(
+        newSubtotal,
+        restaurant.taxPercentage,
+        restaurant.serviceChargePercentage,
+        existingOrder.discountAmount
+      );
 
       const updatedOrder = await prisma.order.update({
         where: { id: existingOrder.id },
@@ -180,10 +183,13 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    const taxAmount = (subtotal * restaurant.taxPercentage) / 100;
-    const serviceCharge = (subtotal * restaurant.serviceChargePercentage) / 100;
-    const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
-    const orderNumber = `ORD-${Date.now()}-${uuidv4().substring(0, 6).toUpperCase()}`;
+    const { taxAmount, serviceCharge, totalAmount } = calculateOrderTotals(
+      subtotal,
+      restaurant.taxPercentage,
+      restaurant.serviceChargePercentage,
+      discountAmount
+    );
+    const orderNumber = generateOrderNumber();
 
     // Create order and update table/coupon in parallel
     const [order] = await Promise.all([

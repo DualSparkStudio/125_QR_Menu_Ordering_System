@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Link from 'next/link';
+import { initializeNotifications } from '../../../../../shared/notificationUtils';
 
 const STEPS = [
   { key: 'pending',   label: 'Order Placed',  icon: '📋', desc: 'We received your order' },
@@ -57,19 +58,13 @@ function OrderContent() {
         
         // Detect status change and trigger vibration
         if (lastStatus && updatedOrder.status !== lastStatus) {
-          // Vibrate on status change
-          if ('vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200]); // Pattern: vibrate 200ms, pause 100ms, vibrate 200ms
-          }
-          
-          // Show browser notification if permission granted
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(`Order #${updatedOrder.orderNumber}`, {
-              body: `Status updated to: ${updatedOrder.status}`,
-              icon: '/icon.png',
-              badge: '/badge.png',
-            });
-          }
+          // Show browser notification for status change
+          showNotification({
+            title: `Order #${updatedOrder.orderNumber}`,
+            body: `Status updated to: ${updatedOrder.status}`,
+            icon: '/icon.png',
+            vibrate: [200, 100, 200],
+          });
         }
         
         setOrder(updatedOrder);
@@ -83,10 +78,8 @@ function OrderContent() {
     // Poll every 2 seconds for real-time updates
     pollInterval = setInterval(pollOrder, 2000);
 
-    // Request notification permission on mount
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
+    // Initialize notifications
+    initializeNotifications();
 
     return () => {
       clearInterval(pollInterval);

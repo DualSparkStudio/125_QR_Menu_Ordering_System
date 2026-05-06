@@ -1,5 +1,4 @@
 [build]
-  base = "guest-app"
   command = "npm install && npx prisma generate && npm run build && cd ../../netlify/functions && npm install && npx prisma generate"
   publish = ".next"
 
@@ -11,7 +10,7 @@
   package = "@netlify/plugin-nextjs"
 
 [functions]
-  directory = "../../netlify/functions"
+  directory = "../netlify/functions"
   node_bundler = "esbuild"
   external_node_modules = [
     "@prisma/client",

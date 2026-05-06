@@ -1,27 +1,30 @@
 'use client';
 
+// Admin orders page
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
-
-const FILTERS = ['', 'pending', 'confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled'];
-const FILTER_LABELS: Record<string, string> = {
-  '': 'All', pending: 'Pending', confirmed: 'Confirmed', preparing: 'Cooking',
-  ready: 'Ready', served: 'Served', completed: 'Done', cancelled: 'Cancelled',
-};
-const STATUS_OPTIONS = [
-  { value: 'pending', label: '🕐 Pending' },
-  { value: 'confirmed', label: '✓ Confirmed' },
-  { value: 'preparing', label: '👨‍🍳 Cooking' },
-  { value: 'ready', label: '🔔 Ready' },
-  { value: 'served', label: '🍽️ Served' },
-  { value: 'completed', label: '✅ Completed' },
-  { value: 'cancelled', label: '✕ Cancelled' },
-];
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'text-yellow-600', confirmed: 'text-blue-600', preparing: 'text-orange-600',
-  ready: 'text-green-600', served: 'text-purple-600', completed: 'text-gray-500', cancelled: 'text-red-500',
-};
+import {
+  ORDER_FILTERS,
+  FILTER_LABELS,
+  STATUS_OPTIONS,
+  STATUS_COLORS,
+  ORDER_TO_ITEM_STATUS,
+  TIME_CONSTANTS,
+} from '../../../../../shared/constants';
+import {
+  getOrderAge,
+  isDelayedOrder,
+  isNewOrder,
+  hasRecentItems,
+  getActiveOrdersCount,
+  getItemStatusFromOrderStatus,
+} from '../../../../../shared/orderUtils';
+import {
+  initializeNotifications,
+  notifyNewOrder,
+  notifyOrderUpdate,
+} from '../../../../../shared/notificationUtils';
 
 export default function OrdersPage() {
   const { staff, token, isAuthenticated } = useAuthStore();
@@ -41,6 +44,24 @@ export default function OrdersPage() {
     if (!staff?.restaurantId || !token) { setLoading(false); return; }
     try {
       const data: any = await adminApi.getOrders(staff.restaurantId, token, filter ? { status: filter } : {});
+      
+      // Check for new orders (compare with previous state)
+      if (orders.length > 0 && data.length > orders.length) {
+        const newOrders = data.filter((newOrder: any) => 
+          !orders.some(oldOrder => oldOrder.id === newOrder.id)
+        );
+        
+        // Show browser notification for new orders
+        if (newOrders.length > 0) {
+          newOrders.forEach((order: any) => {
+            notifyNewOrder(
+              order.orderNumber?.slice(-6) || order.orderNumber,
+              order.table?.tableNumber || 'Unknown'
+            );
+          });
+        }
+      }
+      
       setOrders(data);
       setLastRefresh(new Date());
     } catch (err) {
@@ -52,7 +73,10 @@ export default function OrdersPage() {
 
   useEffect(() => { load(); }, [filter, staff, token]);
   useEffect(() => {
-    const t = setInterval(load, 20000);
+    // Initialize notifications on mount
+    initializeNotifications();
+    
+    const t = setInterval(load, TIME_CONSTANTS.POLLING_INTERVAL);
     return () => clearInterval(t);
   }, [filter, staff, token]);
 
@@ -65,18 +89,7 @@ export default function OrdersPage() {
       // If order status is changed, update all items to match
       const order = orders.find(o => o.id === id);
       if (order && order.items) {
-        // Map order status to item status
-        const itemStatusMap: Record<string, string> = {
-          'pending': 'pending',
-          'confirmed': 'pending',
-          'preparing': 'preparing',
-          'ready': 'ready',
-          'served': 'served',
-          'completed': 'served',
-          'cancelled': 'pending',
-        };
-        
-        const itemStatus = itemStatusMap[newStatus] || 'pending';
+        const itemStatus = getItemStatusFromOrderStatus(newStatus);
         
         // Update all items to match the order status
         await Promise.all(
@@ -156,7 +169,7 @@ export default function OrdersPage() {
       </div>
 
       <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1">
-        {FILTERS.map((f) => {
+        {ORDER_FILTERS.map((f) => {
           const count = f ? orders.filter((o) => o.status === f).length : orders.length;
           return (
             <button key={f} onClick={() => setFilter(f)}
@@ -176,30 +189,31 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((order) => {
-            const age = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
-            const isUrgent = age > 20 && ['pending', 'confirmed', 'preparing'].includes(order.status);
-            const isNew = age < 2; // New if less than 2 minutes old
-            const hasRecentItems = order.items?.some((item: any) => {
-              const itemAge = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 60000);
-              return itemAge < 2;
-            });
+            const age = getOrderAge(order.createdAt);
+            const isUrgent = isDelayedOrder(order.createdAt, order.status);
+            const isNew = isNewOrder(order.createdAt);
+            const hasRecent = hasRecentItems(order);
             
-            // Determine card background color
-            let cardBgClass = 'bg-white';
-            let borderClass = 'border-gray-200';
+            // Determine card background color - MEDIUM FADED COLORS WITH MATCHING BORDERS
+            let cardBgColor = '#ffffff'; // white
+            let borderColor = '#e5e7eb'; // gray-200
+            let innerBorderColor = '#e5e7eb'; // for inner elements
             if (isUrgent) {
-              cardBgClass = 'bg-red-50';
-              borderClass = 'border-red-300';
+              cardBgColor = '#fecaca'; // red-200 (medium/faded)
+              borderColor = '#fecaca'; // same as background for main card
+              innerBorderColor = '#fca5a5'; // slightly darker red for inner borders
             } else if (isNew) {
-              cardBgClass = 'bg-green-50';
-              borderClass = 'border-green-300';
-            } else if (hasRecentItems && !isNew) {
-              cardBgClass = 'bg-blue-50';
-              borderClass = 'border-blue-300';
+              cardBgColor = '#bbf7d0'; // green-200 (medium/faded)
+              borderColor = '#bbf7d0'; // same as background for main card
+              innerBorderColor = '#86efac'; // slightly darker green for inner borders
+            } else if (hasRecent && !isNew) {
+              cardBgColor = '#bfdbfe'; // blue-200 (medium/faded)
+              borderColor = '#bfdbfe'; // same as background for main card
+              innerBorderColor = '#93c5fd'; // slightly darker blue for inner borders
             }
             
             return (
-              <div key={order.id} className={`card overflow-hidden ${cardBgClass} border-2 ${borderClass}`}>
+              <div key={order.id} className="rounded-2xl overflow-hidden border-2 shadow-sm" style={{ backgroundColor: cardBgColor, borderColor: borderColor }}>
                 <div className="flex items-start gap-4 p-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -219,13 +233,15 @@ export default function OrdersPage() {
                     </div>
                     <div className="space-y-2">
                       {order.items?.map((item: any) => {
-                        const itemAge = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 60000);
-                        const isNewItem = itemAge < 2 && !isNew; // New item in existing order
+                        const itemAge = getOrderAge(item.createdAt);
+                        const isNewItem = itemAge < TIME_CONSTANTS.RECENT_ITEM_THRESHOLD && !isNew; // New item in existing order
                         return (
-                          <div key={item.id} className={`flex items-center gap-2 ${isNewItem ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-100'} rounded-lg p-2`}>
-                            {isNewItem && <span className="text-blue-500 text-xs">🆕</span>}
-                            <span className="text-gray-400 text-xs">×{item.quantity}</span>
-                            <span className="flex-1 text-gray-700 text-xs font-medium">{item.menuItem?.name}</span>
+                          <div key={item.id} className="flex items-center gap-3 rounded-lg p-3 border" style={{ backgroundColor: cardBgColor, borderColor: isNewItem ? '#60a5fa' : innerBorderColor }}>
+                            <div className="flex items-center gap-2 flex-1">
+                              {isNewItem && <span className="text-blue-500 text-sm flex-shrink-0">🆕</span>}
+                              <span className="text-gray-400 text-sm flex-shrink-0">×{item.quantity}</span>
+                              <span className="flex-1 text-gray-700 text-sm font-medium">{item.menuItem?.name}</span>
+                            </div>
                             <select
                               value={item.status || 'pending'}
                               onChange={(e) => {
@@ -236,10 +252,11 @@ export default function OrdersPage() {
                                   .finally(() => setUpdating(null));
                               }}
                               disabled={updating === item.id}
-                              className="text-xs px-2 py-1 rounded border border-gray-200 bg-white cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50"
+                              className="text-xs px-3 py-1.5 rounded-lg border cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50 flex-shrink-0"
+                              style={{ backgroundColor: cardBgColor, borderColor: innerBorderColor }}
                             >
                               <option value="pending">Pending</option>
-                              <option value="preparing">Preparing</option>
+                              <option value="preparing">Cooking</option>
                               <option value="ready">Ready</option>
                               <option value="served">Served</option>
                             </select>
@@ -256,7 +273,7 @@ export default function OrdersPage() {
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <p className="font-black text-gray-900 text-lg">₹{order.totalAmount?.toFixed(0)}</p>
                     <div className="flex gap-1.5 flex-wrap justify-end items-center">
-                      <button onClick={() => printBill(order)} className="btn-secondary text-xs px-3 py-2">🖨️ Bill</button>
+                      <button onClick={() => printBill(order)} className="text-xs px-3 py-2 rounded-xl border font-semibold transition-all hover:opacity-80" style={{ backgroundColor: cardBgColor, borderColor: innerBorderColor }}>🖨️ Bill</button>
                       {order.status === 'completed' && order.paymentStatus !== 'completed' && (
                         <button onClick={() => markPaid(order.id)} disabled={updating === order.id}
                           className="text-xs font-semibold px-3 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-50">
@@ -265,7 +282,8 @@ export default function OrdersPage() {
                       )}
                       <select value={order.status} disabled={updating === order.id}
                         onChange={(e) => updateStatus(order.id, e.target.value)}
-                        className={`text-xs font-semibold px-3 py-2 rounded-xl border border-gray-200 bg-white cursor-pointer focus:outline-none focus:border-orange-400 transition-all disabled:opacity-50 ${STATUS_COLORS[order.status]}`}>
+                        className={`text-xs font-semibold px-3 py-2 rounded-xl border cursor-pointer focus:outline-none focus:border-orange-400 transition-all disabled:opacity-50 ${STATUS_COLORS[order.status]}`}
+                        style={{ backgroundColor: cardBgColor, borderColor: innerBorderColor }}>
                         {STATUS_OPTIONS.map((s) => (
                           <option key={s.value} value={s.value} className="text-gray-700">{s.label}</option>
                         ))}
