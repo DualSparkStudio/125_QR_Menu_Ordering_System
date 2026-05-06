@@ -19,7 +19,7 @@ export const handler: Handler = async (event) => {
       if (!user) return error('Unauthorized', 401);
 
       const coupons = await prisma.coupon.findMany({
-        where: { restaurantId, deletedAt: null },
+        where: { restaurantId, isActive: true },
         orderBy: { createdAt: 'desc' },
       });
       return success(coupons);
@@ -34,7 +34,7 @@ export const handler: Handler = async (event) => {
         }
 
         const coupon = await prisma.coupon.findFirst({
-          where: { restaurantId, code, isActive: true, deletedAt: null },
+          where: { restaurantId, code, isActive: true },
         });
 
         if (!coupon) return error('Invalid coupon code', 404);

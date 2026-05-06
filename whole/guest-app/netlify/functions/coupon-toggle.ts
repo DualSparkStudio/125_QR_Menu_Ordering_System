@@ -34,7 +34,7 @@ export const handler: Handler = async (event) => {
 
       await prisma.coupon.update({
         where: { id: couponId },
-        data: { deletedAt: new Date() },
+        data: { isActive: false },
       });
       return success({ message: 'Coupon deleted' });
     }
