@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============ RESTAURANT (Multi-tenant root) ============
@@ -401,6 +402,26 @@ model Review {
   createdAt DateTime @default(now())
 
   @@index([restaurantId])
+}
+
+// ============ PUSH SUBSCRIPTIONS ============
+model PushSubscription {
+  id           String  @id @default(cuid())
+  userId       String
+  userType     String  // admin, guest
+  restaurantId String?
+  tableId      String?
+  endpoint     String  @unique
+  keys         String  // JSON: { p256dh, auth }
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([restaurantId])
+  @@index([tableId])
+  @@index([userType])
+  @@index([isActive])
 }
 
 // ============ AUDIT LOGS ============
