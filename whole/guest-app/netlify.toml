@@ -28,13 +28,23 @@
 
 # API route redirects
 [[redirects]]
-  from = "/api/push/subscribe"
-  to = "/.netlify/functions/push-subscribe"
+  from = "/api/tables/number/:tableNumber"
+  to = "/.netlify/functions/tables-by-number?tableNumber=:tableNumber"
   status = 200
 
 [[redirects]]
-  from = "/api/push/send"
-  to = "/.netlify/functions/push-send"
+  from = "/api/admin/restaurants/:restaurantId/dashboard"
+  to = "/.netlify/functions/admin-dashboard?restaurantId=:restaurantId"
+  status = 200
+
+[[redirects]]
+  from = "/api/restaurants/:restaurantId/orders"
+  to = "/.netlify/functions/orders-list?restaurantId=:restaurantId"
+  status = 200
+
+[[redirects]]
+  from = "/api/push/subscribe"
+  to = "/.netlify/functions/push-subscribe"
   status = 200
 
 [[redirects]]
