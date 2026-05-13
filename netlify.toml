@@ -80,13 +80,18 @@
   status = 200
 
 [[redirects]]
+  from = "/api/restaurants/:restaurantId/tables/:tableId/regenerate-qr"
+  to = "/.netlify/functions/tables-update?restaurantId=:restaurantId&tableId=:tableId"
+  status = 200
+
+[[redirects]]
   from = "/api/restaurants/:restaurantId/tables/:tableId"
   to = "/.netlify/functions/tables-update?restaurantId=:restaurantId&tableId=:tableId"
   status = 200
 
 [[redirects]]
   from = "/api/restaurants/:restaurantId/tables"
-  to = "/.netlify/functions/tables-list?restaurantId=:restaurantId"
+  to = "/.netlify/functions/tables?restaurantId=:restaurantId"
   status = 200
 
 [[redirects]]
@@ -165,13 +170,23 @@
   status = 200
 
 [[redirects]]
-  from = "/api/restaurants/:restaurantId/coupons"
+  from = "/api/restaurants/:restaurantId/coupons/validate"
   to = "/.netlify/functions/coupons?restaurantId=:restaurantId"
   status = 200
 
 [[redirects]]
   from = "/api/restaurants/:restaurantId/coupons/:couponId/toggle"
   to = "/.netlify/functions/coupon-toggle?restaurantId=:restaurantId&couponId=:couponId"
+  status = 200
+
+[[redirects]]
+  from = "/api/restaurants/:restaurantId/coupons"
+  to = "/.netlify/functions/coupons?restaurantId=:restaurantId"
+  status = 200
+
+[[redirects]]
+  from = "/api/restaurants/:restaurantId/tables/:tableId/orders"
+  to = "/.netlify/functions/orders-create?restaurantId=:restaurantId&tableId=:tableId"
   status = 200
 
 [[redirects]]

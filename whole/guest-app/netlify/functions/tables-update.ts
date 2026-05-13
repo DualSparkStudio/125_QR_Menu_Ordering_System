@@ -1,11 +1,12 @@
 import { Handler } from '@netlify/functions';
+import { withPrisma } from './lib/withPrisma';
 import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
 import { getAuthUser } from './lib/auth';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 
-export const handler: Handler = async (event) => {
+const handlerImpl: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return handleCors();
   }
@@ -70,3 +71,5 @@ export const handler: Handler = async (event) => {
     return error(err.message || 'Failed to update table', 500);
   }
 };
+
+export const handler = withPrisma(handlerImpl);

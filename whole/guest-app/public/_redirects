@@ -26,11 +26,13 @@
 /api/restaurants/:restaurantId/menu/categories /.netlify/functions/menu-categories?restaurantId=:restaurantId 200
 /api/restaurants/:restaurantId/menu/items/:itemId /.netlify/functions/menu-item?restaurantId=:restaurantId&itemId=:itemId 200
 /api/restaurants/:restaurantId/menu/items /.netlify/functions/menu-items?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/tables/:tableId/orders /.netlify/functions/orders-create?restaurantId=:restaurantId&tableId=:tableId 200
 /api/restaurants/:restaurantId/tables/:tableId /.netlify/functions/tables-update?restaurantId=:restaurantId&tableId=:tableId 200
 /api/restaurants/:restaurantId/tables /.netlify/functions/tables-list?restaurantId=:restaurantId 200
 /api/restaurants/:restaurantId/orders/:orderId /.netlify/functions/orders-get?restaurantId=:restaurantId&orderId=:orderId 200
 /api/restaurants/:restaurantId/orders /.netlify/functions/orders-list?restaurantId=:restaurantId 200
 /api/restaurants/:restaurantId/reviews /.netlify/functions/reviews?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/coupons/validate /.netlify/functions/coupons?restaurantId=:restaurantId 200
 /api/restaurants/:restaurantId/coupons/:couponId/toggle /.netlify/functions/coupon-toggle?restaurantId=:restaurantId&couponId=:couponId 200
 /api/restaurants/:restaurantId/coupons /.netlify/functions/coupons?restaurantId=:restaurantId 200
 /api/restaurants/:restaurantId /.netlify/functions/restaurants?restaurantId=:restaurantId 200
