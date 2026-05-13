@@ -72,6 +72,7 @@ const handlerImpl: Handler = async (event) => {
             id: true,
             quantity: true,
             price: true,
+            status: true,
             createdAt: true,
             updatedAt: true,
             menuItem: {

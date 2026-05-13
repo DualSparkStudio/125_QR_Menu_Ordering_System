@@ -49,9 +49,14 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'admin-auth',
+      partialize: (state) => ({
+        staff: state.staff,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.isAuthenticated = !!(state.token && state.staff);
+        if (state && state.token && state.staff) {
+          state.isAuthenticated = true;
         }
       },
     }
