@@ -1,8 +1,9 @@
 import { Handler } from '@netlify/functions';
+import { withPrisma } from './lib/withPrisma';
 import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
 
-export const handler: Handler = async (event) => {
+const handlerImpl: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return handleCors();
   }
@@ -62,3 +63,5 @@ export const handler: Handler = async (event) => {
     return error(err.message || 'Failed to fetch order', 500);
   }
 };
+
+export const handler = withPrisma(handlerImpl);

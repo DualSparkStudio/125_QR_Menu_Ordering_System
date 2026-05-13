@@ -39,10 +39,11 @@
 /api/restaurants /.netlify/functions/restaurants 200
 
 # Orders
-/api/orders/create /.netlify/functions/orders-create 200
-/api/orders/active /.netlify/functions/orders-active 200
 /api/orders/:orderId/status /.netlify/functions/orders-update-status?orderId=:orderId 200
 /api/orders/:orderId/paid /.netlify/functions/orders-mark-paid?orderId=:orderId 200
+/api/orders/:orderId /.netlify/functions/orders-get?orderId=:orderId 200
+/api/orders/create /.netlify/functions/orders-create 200
+/api/orders/active /.netlify/functions/orders-active 200
 
 # Payments
 /api/payments/razorpay/create /.netlify/functions/payments-razorpay-create 200
