@@ -1,4 +1,5 @@
 import { Handler } from '@netlify/functions';
+import { withPrisma } from './lib/withPrisma';
 import { prisma } from './lib/prisma';
 import { success, error, handleCors } from './lib/response';
 import { getAuthUser } from './lib/auth';
@@ -7,7 +8,7 @@ import { getAuthUser } from './lib/auth';
 const cache = new Map<string, { data: any; expires: number }>();
 const CACHE_TTL = 3000; // 3 seconds for admin orders
 
-export const handler: Handler = async (event) => {
+const handlerImpl: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return handleCors();
   }
@@ -133,3 +134,5 @@ export const handler: Handler = async (event) => {
     return error(err.message || 'Failed to fetch orders', 500);
   }
 };
+
+export const handler = withPrisma(handlerImpl);
