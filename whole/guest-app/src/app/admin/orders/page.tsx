@@ -246,9 +246,26 @@ export default function OrdersPage() {
                               value={item.status || 'pending'}
                               onChange={(e) => {
                                 if (!token) return;
+                                const newStatus = e.target.value;
                                 setUpdating(item.id);
-                                adminApi.updateItemStatus(item.id, e.target.value, token)
+                                
+                                // Optimistically update UI
+                                setOrders(prevOrders => 
+                                  prevOrders.map(o => 
+                                    o.id === order.id 
+                                      ? {
+                                          ...o,
+                                          items: o.items.map((i: any) => 
+                                            i.id === item.id ? { ...i, status: newStatus } : i
+                                          )
+                                        }
+                                      : o
+                                  )
+                                );
+                                
+                                adminApi.updateItemStatus(item.id, newStatus, token)
                                   .then(() => load())
+                                  .catch(() => load()) // Reload on error to revert optimistic update
                                   .finally(() => setUpdating(null));
                               }}
                               disabled={updating === item.id}
