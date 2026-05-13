@@ -1,10 +1,10 @@
 [build]
   base = "whole/guest-app"
-  command = "npm install && npx prisma generate && npm run build"
+  command = "cd ../shared && npm install && cd ../guest-app && npm install && npx prisma generate && npm run build"
   publish = ".next"
 
 [functions]
-  directory = "../../netlify/functions"
+  directory = "netlify/functions"
   node_bundler = "esbuild"
   external_node_modules = [
     "@prisma/client",
@@ -25,21 +25,71 @@
   NPM_VERSION = "9"
 
 [[redirects]]
+  from = "/api/push/subscribe"
+  to = "/.netlify/functions/push-subscribe"
+  status = 200
+
+[[redirects]]
+  from = "/api/push/send"
+  to = "/.netlify/functions/push-send"
+  status = 200
+
+[[redirects]]
+  from = "/api/push/worker"
+  to = "/.netlify/functions/push-worker"
+  status = 200
+
+[[redirects]]
   from = "/api/auth/staff/login"
-  to = "/.netlify/functions/api/auth/staff/login"
+  to = "/.netlify/functions/auth-staff-login"
   status = 200
 
 [[redirects]]
   from = "/api/auth/table/session"
-  to = "/.netlify/functions/api/auth/table/session"
+  to = "/.netlify/functions/auth-table-session"
   status = 200
 
 [[redirects]]
   from = "/api/auth/refresh"
-  to = "/.netlify/functions/api/auth/refresh"
+  to = "/.netlify/functions/auth-refresh"
   status = 200
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  from = "/api/restaurants/*"
+  to = "/.netlify/functions/restaurants/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/tables/*"
+  to = "/.netlify/functions/tables/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/menu/*"
+  to = "/.netlify/functions/menu-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/orders/*"
+  to = "/.netlify/functions/orders-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/reviews/*"
+  to = "/.netlify/functions/reviews/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/coupons/*"
+  to = "/.netlify/functions/coupons/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/*"
+  to = "/.netlify/functions/admin-:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/payments/*"
+  to = "/.netlify/functions/payments-:splat"
   status = 200
