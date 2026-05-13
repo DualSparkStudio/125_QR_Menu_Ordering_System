@@ -1,0 +1,47 @@
+# API redirects - processed in order, first match wins
+
+# Push notifications
+/api/push/subscribe /.netlify/functions/push-subscribe 200
+/api/push/send /.netlify/functions/push-send 200
+/api/push/worker /.netlify/functions/push-worker 200
+
+# Auth
+/api/auth/staff/login /.netlify/functions/auth-staff-login 200
+/api/auth/table/session /.netlify/functions/auth-table-session 200
+/api/auth/refresh /.netlify/functions/auth-refresh 200
+
+# Tables - specific routes first
+/api/tables/number/:tableNumber /.netlify/functions/tables-by-number?tableNumber=:tableNumber 200
+/api/tables/qr/:qrCode /.netlify/functions/tables-qr?qrCode=:qrCode 200
+/api/tables/:tableId/orders/active /.netlify/functions/orders-active?tableId=:tableId 200
+
+# Admin
+/api/admin/restaurants/:restaurantId/dashboard /.netlify/functions/admin-dashboard?restaurantId=:restaurantId 200
+/api/admin/restaurants/:restaurantId/revenue /.netlify/functions/admin-revenue?restaurantId=:restaurantId 200
+/api/admin/restaurants/:restaurantId/staff /.netlify/functions/admin-staff?restaurantId=:restaurantId 200
+
+# Restaurants - specific routes first
+/api/restaurants/:restaurantId/menu/categories/admin /.netlify/functions/menu-categories?restaurantId=:restaurantId&admin=true 200
+/api/restaurants/:restaurantId/menu/categories/:categoryId /.netlify/functions/menu-category?restaurantId=:restaurantId&categoryId=:categoryId 200
+/api/restaurants/:restaurantId/menu/categories /.netlify/functions/menu-categories?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/menu/items/:itemId /.netlify/functions/menu-item?restaurantId=:restaurantId&itemId=:itemId 200
+/api/restaurants/:restaurantId/menu/items /.netlify/functions/menu-items?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/tables/:tableId /.netlify/functions/tables-update?restaurantId=:restaurantId&tableId=:tableId 200
+/api/restaurants/:restaurantId/tables /.netlify/functions/tables-list?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/orders/:orderId /.netlify/functions/orders-get?restaurantId=:restaurantId&orderId=:orderId 200
+/api/restaurants/:restaurantId/orders /.netlify/functions/orders-list?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/reviews /.netlify/functions/reviews?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId/coupons/:couponId/toggle /.netlify/functions/coupon-toggle?restaurantId=:restaurantId&couponId=:couponId 200
+/api/restaurants/:restaurantId/coupons /.netlify/functions/coupons?restaurantId=:restaurantId 200
+/api/restaurants/:restaurantId /.netlify/functions/restaurants?restaurantId=:restaurantId 200
+/api/restaurants /.netlify/functions/restaurants 200
+
+# Orders
+/api/orders/create /.netlify/functions/orders-create 200
+/api/orders/active /.netlify/functions/orders-active 200
+/api/orders/:orderId/status /.netlify/functions/orders-update-status?orderId=:orderId 200
+/api/orders/:orderId/paid /.netlify/functions/orders-mark-paid?orderId=:orderId 200
+
+# Payments
+/api/payments/razorpay/create /.netlify/functions/payments-razorpay-create 200
+/api/payments/razorpay/verify /.netlify/functions/payments-razorpay-verify 200
