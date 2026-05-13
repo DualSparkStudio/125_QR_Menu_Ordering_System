@@ -38,6 +38,9 @@
 /api/restaurants/:restaurantId /.netlify/functions/restaurants?restaurantId=:restaurantId 200
 /api/restaurants /.netlify/functions/restaurants 200
 
+# Order items
+/api/order-items/:itemId/status /.netlify/functions/order-items-update-status?itemId=:itemId 200
+
 # Orders
 /api/orders/:orderId/status /.netlify/functions/orders-update-status?orderId=:orderId 200
 /api/orders/:orderId/paid /.netlify/functions/orders-mark-paid?orderId=:orderId 200

@@ -115,6 +115,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/order-items/:itemId/status"
+  to = "/.netlify/functions/order-items-update-status?itemId=:itemId"
+  status = 200
+
+[[redirects]]
   from = "/api/orders/:orderId/status"
   to = "/.netlify/functions/orders-update-status?orderId=:orderId"
   status = 200
