@@ -65,6 +65,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/tables/:tableId/orders/active"
+  to = "/.netlify/functions/orders-active?tableId=:tableId"
+  status = 200
+
+[[redirects]]
   from = "/api/tables/:restaurantId"
   to = "/.netlify/functions/tables-list?restaurantId=:restaurantId"
   status = 200
@@ -81,7 +86,7 @@
 
 [[redirects]]
   from = "/api/restaurants/:restaurantId/tables"
-  to = "/.netlify/functions/tables-create?restaurantId=:restaurantId"
+  to = "/.netlify/functions/tables-list?restaurantId=:restaurantId"
   status = 200
 
 [[redirects]]
@@ -127,6 +132,11 @@
 [[redirects]]
   from = "/api/admin/restaurants/:restaurantId/staff"
   to = "/.netlify/functions/admin-staff?restaurantId=:restaurantId"
+  status = 200
+
+[[redirects]]
+  from = "/api/restaurants/:restaurantId/menu/categories/admin"
+  to = "/.netlify/functions/menu-categories?restaurantId=:restaurantId&admin=true"
   status = 200
 
 [[redirects]]
