@@ -20,27 +20,46 @@ export const handler: Handler = async (event) => {
       if (isStats) {
         // GET /restaurants/:restaurantId/reviews/stats
         const reviews = await prisma.review.findMany({
-          where: { restaurantId, deletedAt: null },
+          where: { restaurantId },
         });
 
         const totalReviews = reviews.length;
-        const averageRating = totalReviews > 0
-          ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+        const averageFoodRating = totalReviews > 0
+          ? reviews.reduce((sum, r) => sum + r.foodRating, 0) / totalReviews
           : 0;
+        const averageServiceRating = totalReviews > 0
+          ? reviews.reduce((sum, r) => sum + r.serviceRating, 0) / totalReviews
+          : 0;
+        const averageRating = (averageFoodRating + averageServiceRating) / 2;
 
-        const ratingDistribution = {
-          5: reviews.filter(r => r.rating === 5).length,
-          4: reviews.filter(r => r.rating === 4).length,
-          3: reviews.filter(r => r.rating === 3).length,
-          2: reviews.filter(r => r.rating === 2).length,
-          1: reviews.filter(r => r.rating === 1).length,
+        const foodRatingDistribution = {
+          5: reviews.filter(r => r.foodRating === 5).length,
+          4: reviews.filter(r => r.foodRating === 4).length,
+          3: reviews.filter(r => r.foodRating === 3).length,
+          2: reviews.filter(r => r.foodRating === 2).length,
+          1: reviews.filter(r => r.foodRating === 1).length,
         };
 
-        return success({ totalReviews, averageRating, ratingDistribution });
+        const serviceRatingDistribution = {
+          5: reviews.filter(r => r.serviceRating === 5).length,
+          4: reviews.filter(r => r.serviceRating === 4).length,
+          3: reviews.filter(r => r.serviceRating === 3).length,
+          2: reviews.filter(r => r.serviceRating === 2).length,
+          1: reviews.filter(r => r.serviceRating === 1).length,
+        };
+
+        return success({ 
+          totalReviews, 
+          averageRating,
+          averageFoodRating,
+          averageServiceRating,
+          foodRatingDistribution,
+          serviceRatingDistribution
+        });
       } else {
         // GET /restaurants/:restaurantId/reviews
         const reviews = await prisma.review.findMany({
-          where: { restaurantId, deletedAt: null },
+          where: { restaurantId },
           include: {
             order: {
               select: {
@@ -58,16 +77,16 @@ export const handler: Handler = async (event) => {
     if (event.httpMethod === 'POST') {
       // POST /restaurants/:restaurantId/reviews/orders/:orderId
       const orderId = pathParts[pathParts.indexOf('orders') + 1];
-      const { rating, comment, foodRating, serviceRating, ambianceRating } = JSON.parse(event.body || '{}');
+      const { foodRating, serviceRating, comment, guestName } = JSON.parse(event.body || '{}');
 
-      if (!rating) return error('Rating is required', 400);
+      if (!foodRating || !serviceRating) return error('Food rating and service rating are required', 400);
 
       const order = await prisma.order.findUnique({ where: { id: orderId } });
       if (!order) return error('Order not found', 404);
       if (order.restaurantId !== restaurantId) return error('Order does not belong to this restaurant', 400);
 
-      const existingReview = await prisma.review.findFirst({
-        where: { orderId, deletedAt: null },
+      const existingReview = await prisma.review.findUnique({
+        where: { orderId },
       });
       if (existingReview) return error('Review already exists for this order', 400);
 
@@ -75,11 +94,10 @@ export const handler: Handler = async (event) => {
         data: {
           restaurantId,
           orderId,
-          rating,
-          comment,
           foodRating,
           serviceRating,
-          ambianceRating,
+          comment,
+          guestName,
         },
       });
 
