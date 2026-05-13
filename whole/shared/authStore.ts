@@ -24,8 +24,10 @@ export interface AuthStoreState {
   loading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  isHydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  setHydrated: (hydrated: boolean) => void;
 }
 
 export function createAuthStore(adminApi: AdminApiLike) {
@@ -37,6 +39,7 @@ export function createAuthStore(adminApi: AdminApiLike) {
         loading: false,
         error: null,
         isAuthenticated: false,
+        isHydrated: false,
 
         login: async (email, password) => {
           set({ loading: true, error: null });
@@ -55,12 +58,15 @@ export function createAuthStore(adminApi: AdminApiLike) {
         },
 
         logout: () => set({ staff: null, token: null, isAuthenticated: false }),
+        
+        setHydrated: (hydrated) => set({ isHydrated: hydrated }),
       }),
       {
         name: "admin-auth",
         onRehydrateStorage: () => (state) => {
           if (state) {
             state.isAuthenticated = !!(state.token && state.staff);
+            state.isHydrated = true;
           }
         },
       }

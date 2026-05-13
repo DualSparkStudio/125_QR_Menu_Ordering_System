@@ -16,6 +16,7 @@ interface AuthStore {
   loading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  hydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -28,6 +29,7 @@ export const useAuthStore = create<AuthStore>()(
       loading: false,
       error: null,
       isAuthenticated: false,
+      hydrated: false,
 
       login: async (email, password) => {
         set({ loading: true, error: null });
@@ -55,8 +57,11 @@ export const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state && state.token && state.staff) {
-          state.isAuthenticated = true;
+        if (state) {
+          if (state.token && state.staff) {
+            state.isAuthenticated = true;
+          }
+          state.hydrated = true;
         }
       },
     }

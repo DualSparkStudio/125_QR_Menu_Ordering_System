@@ -8,6 +8,7 @@ type AuthHook = () => {
   staff: { role?: string; name?: string; email?: string } | null;
   logout: () => void;
   isAuthenticated: boolean;
+  isHydrated: boolean;
   login: (email: string, password: string) => Promise<void>;
   loading: boolean;
   error: string | null;
@@ -30,16 +31,16 @@ export function createAdminLayout(useAuthStore: AuthHook) {
   return function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
-    const { staff, logout, isAuthenticated } = useAuthStore();
+    const { staff, logout, isAuthenticated, isHydrated } = useAuthStore();
     const [collapsed, setCollapsed] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-      setMounted(true);
-      if (!isAuthenticated) router.replace('/');
-    }, [isAuthenticated, router]);
+      if (isHydrated && !isAuthenticated) {
+        router.replace('/');
+      }
+    }, [isAuthenticated, isHydrated, router]);
 
-    if (!mounted || !isAuthenticated) {
+    if (!isHydrated || !isAuthenticated) {
       return (
         <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -102,16 +103,16 @@ export function createAdminLayout(useAuthStore: AuthHook) {
 export function createLoginPage(useAuthStore: AuthHook) {
   return function LoginPage() {
     const router = useRouter();
-    const { login, loading, error, isAuthenticated } = useAuthStore();
+    const { login, loading, error, isAuthenticated, isHydrated } = useAuthStore();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPass, setShowPass] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-      setMounted(true);
-      if (isAuthenticated) router.replace('/dashboard');
-    }, [isAuthenticated, router]);
+      if (isHydrated && isAuthenticated) {
+        router.replace('/dashboard');
+      }
+    }, [isAuthenticated, isHydrated, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -121,7 +122,7 @@ export function createLoginPage(useAuthStore: AuthHook) {
       } catch {}
     };
 
-    if (!mounted || isAuthenticated) {
+    if (!isHydrated || isAuthenticated) {
       return (
         <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
