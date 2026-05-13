@@ -3,44 +3,46 @@
 ## Problem
 All API endpoints were returning 404 errors in production, even though the build was successful.
 
-## Root Cause
-The Netlify configuration had conflicting settings between the root `netlify.toml` and `whole/guest-app/netlify.toml`:
+## Root Cause Analysis
 
-1. **Root netlify.toml** had:
-   - `base = "whole/guest-app"`
-   - `functions.directory = "netlify/functions"` (relative to base)
-   - This would look for functions at: `whole/guest-app/netlify/functions` ✓
+### Issue 1: Path Duplication
+The Netlify configuration had incorrect path handling:
+- `base = "whole/guest-app"` tells Netlify to work from that directory
+- `publish = "whole/guest-app/.next"` was WRONG - this created a duplicated path
+- Netlify looked for: `/opt/build/repo/whole/guest-app/whole/guest-app/.next` ❌
 
-2. **whole/guest-app/netlify.toml** had:
-   - `functions.directory = "./netlify/functions"` (relative to guest-app)
-   - This would also look at: `whole/guest-app/netlify/functions` ✓
-
-However, the `publish` directory was inconsistent:
-- Root: `publish = ".next"` (relative to base = `whole/guest-app/.next`) ✓
-- But having two config files caused Netlify to be confused about which configuration to use
+### Issue 2: Conflicting Configuration Files
+- Had two `netlify.toml` files (root and `whole/guest-app/netlify.toml`)
+- Caused confusion about which configuration to use
 
 ## Solution
 
-### 1. Fixed Root netlify.toml
-Updated the functions directory path to be explicit:
+### 1. Fixed Path Configuration in netlify.toml
+When using `base`, all other paths must be **relative to the base directory**:
+
 ```toml
 [build]
-  base = "whole/guest-app"
-  publish = "whole/guest-app/.next"
+  base = "whole/guest-app"          # Work from this directory
+  publish = ".next"                  # Relative to base (not whole/guest-app/.next)
 
 [functions]
-  directory = "whole/guest-app/netlify/functions"
+  directory = "netlify/functions"    # Relative to base (not whole/guest-app/netlify/functions)
 ```
 
 ### 2. Removed Duplicate Configuration
 Deleted `whole/guest-app/netlify.toml` to avoid conflicts. The root `netlify.toml` now handles all configuration.
 
 ### 3. Kept _redirects File
-The `whole/guest-app/public/_redirects` file is still in place as a backup, but the redirects in `netlify.toml` should now work correctly.
+The `whole/guest-app/public/_redirects` file is still in place as a backup.
 
 ## Files Changed
-- ✏️ `netlify.toml` - Fixed functions directory path and publish path
+- ✏️ `netlify.toml` - Fixed publish and functions paths to be relative to base
 - ❌ `whole/guest-app/netlify.toml` - Removed to avoid conflicts
+
+## Key Learning
+**When using `base` in netlify.toml:**
+- ✅ `publish = ".next"` (relative to base)
+- ❌ `publish = "whole/guest-app/.next"` (creates duplicate path)
 
 ## Next Steps
 1. Commit these changes

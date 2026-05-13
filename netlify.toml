@@ -1,10 +1,10 @@
 [build]
   base = "whole/guest-app"
   command = "cd ../shared && npm install && cd ../guest-app && npm install && npx prisma generate && npm run build"
-  publish = "whole/guest-app/.next"
+  publish = ".next"
 
 [functions]
-  directory = "whole/guest-app/netlify/functions"
+  directory = "netlify/functions"
   node_bundler = "esbuild"
   external_node_modules = [
     "@prisma/client",
