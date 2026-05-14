@@ -56,15 +56,29 @@ export async function showNotification(options: NotificationOptions): Promise<No
     // Try to use service worker notification (required on mobile)
     if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(options.title, {
+      
+      // Build notification options without vibrate (not supported in service worker API)
+      const notificationOptions: globalThis.NotificationOptions = {
         body: options.body,
         icon: options.icon || '/icon.png',
         badge: options.badge,
         tag: options.tag,
         requireInteraction: options.requireInteraction ?? true,
         silent: options.silent ?? false,
-        vibrate: options.vibrate,
-      });
+      };
+      
+      // Add vibrate if supported (some browsers support it)
+      if (options.vibrate) {
+        (notificationOptions as any).vibrate = options.vibrate;
+      }
+      
+      await registration.showNotification(options.title, notificationOptions);
+      
+      // Trigger vibration separately if supported
+      if (options.vibrate && 'vibrate' in navigator) {
+        navigator.vibrate(options.vibrate);
+      }
+      
       return null; // Service worker notifications don't return a Notification object
     }
 
