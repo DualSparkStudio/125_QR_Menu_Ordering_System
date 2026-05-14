@@ -99,13 +99,13 @@ function MenuContent() {
           // Clear session and cart
           clearSession();
           
-          // Show notification
+          // Show notification (non-blocking)
           showNotification({
             title: 'Payment Completed!',
             body: 'Thank you! Your table is now cleared.',
             icon: '/icon.png',
             vibrate: [200, 100, 200],
-          });
+          }).catch(err => console.error('Notification failed:', err));
           
           // Vibrate
           if ('vibrate' in navigator) {

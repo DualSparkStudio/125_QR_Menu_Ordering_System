@@ -112,15 +112,15 @@ export default function CartPage() {
       setCurrentOrder(order);
       setActiveSession(true);
       
-      // Show browser notification
+      // Navigate first to ensure user sees confirmation page
+      router.push(`/orders/${order.id}?new=1`);
+      
+      // Show browser notification (non-blocking)
       showNotification({
         title: '🎉 Order Placed!',
         body: `Order #${order.orderNumber?.slice(-6)} has been placed successfully`,
         icon: '/icon.png',
-      });
-      
-      // Navigate first, then clear cart to avoid flash
-      router.push(`/orders/${order.id}?new=1`);
+      }).catch(err => console.error('Notification failed:', err));
       
       // Clear cart after a tiny delay to ensure navigation started
       setTimeout(() => clearCart(), 100);

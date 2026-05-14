@@ -47,33 +47,54 @@ export interface NotificationOptions {
   vibrate?: number[];
 }
 
-export function showNotification(options: NotificationOptions): Notification | null {
+export async function showNotification(options: NotificationOptions): Promise<Notification | null> {
   if (!canShowNotifications()) {
     return null;
   }
 
-  const notification = new Notification(options.title, {
-    body: options.body,
-    icon: options.icon || '/icon.png',
-    badge: options.badge,
-    tag: options.tag,
-    requireInteraction: options.requireInteraction ?? true,
-    silent: options.silent ?? false,
-  });
+  try {
+    // Try to use service worker notification (required on mobile)
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(options.title, {
+        body: options.body,
+        icon: options.icon || '/icon.png',
+        badge: options.badge,
+        tag: options.tag,
+        requireInteraction: options.requireInteraction ?? true,
+        silent: options.silent ?? false,
+        vibrate: options.vibrate,
+      });
+      return null; // Service worker notifications don't return a Notification object
+    }
 
-  // Vibrate if supported and pattern provided
-  if (options.vibrate && 'vibrate' in navigator) {
-    navigator.vibrate(options.vibrate);
+    // Fallback to regular notification for desktop
+    const notification = new Notification(options.title, {
+      body: options.body,
+      icon: options.icon || '/icon.png',
+      badge: options.badge,
+      tag: options.tag,
+      requireInteraction: options.requireInteraction ?? true,
+      silent: options.silent ?? false,
+    });
+
+    // Vibrate if supported and pattern provided
+    if (options.vibrate && 'vibrate' in navigator) {
+      navigator.vibrate(options.vibrate);
+    }
+
+    return notification;
+  } catch (error) {
+    console.error('Failed to show notification:', error);
+    return null;
   }
-
-  return notification;
 }
 
 /**
  * Show notification for new order
  */
-export function notifyNewOrder(orderNumber: string, tableNumber: string): void {
-  showNotification({
+export async function notifyNewOrder(orderNumber: string, tableNumber: string): Promise<void> {
+  await showNotification({
     title: '🔔 New Order!',
     body: `Order #${orderNumber} - Table ${tableNumber}`,
     tag: `order-${orderNumber}`,
@@ -84,8 +105,8 @@ export function notifyNewOrder(orderNumber: string, tableNumber: string): void {
 /**
  * Show notification for order update
  */
-export function notifyOrderUpdate(orderNumber: string, tableNumber: string, itemCount: number): void {
-  showNotification({
+export async function notifyOrderUpdate(orderNumber: string, tableNumber: string, itemCount: number): Promise<void> {
+  await showNotification({
     title: '📝 Order Updated',
     body: `Order #${orderNumber} - Table ${tableNumber} - ${itemCount} item(s) added`,
     tag: `order-${orderNumber}`,
@@ -96,7 +117,7 @@ export function notifyOrderUpdate(orderNumber: string, tableNumber: string, item
 /**
  * Show notification for order status change
  */
-export function notifyOrderStatus(orderNumber: string, status: string): void {
+export async function notifyOrderStatus(orderNumber: string, status: string): Promise<void> {
   const statusMessages: Record<string, string> = {
     confirmed: 'Order confirmed and being prepared',
     preparing: 'Order is being prepared in the kitchen',
@@ -107,7 +128,7 @@ export function notifyOrderStatus(orderNumber: string, status: string): void {
 
   const message = statusMessages[status] || `Order status: ${status}`;
 
-  showNotification({
+  await showNotification({
     title: `Order #${orderNumber}`,
     body: message,
     tag: `order-${orderNumber}-status`,

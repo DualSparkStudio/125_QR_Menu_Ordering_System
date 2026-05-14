@@ -58,13 +58,13 @@ function OrderContent() {
         
         // Detect status change and trigger vibration
         if (lastStatus && updatedOrder.status !== lastStatus) {
-          // Show browser notification for status change
+          // Show browser notification for status change (non-blocking)
           showNotification({
             title: `Order #${updatedOrder.orderNumber}`,
             body: `Status updated to: ${updatedOrder.status}`,
             icon: '/icon.png',
             vibrate: [200, 100, 200],
-          });
+          }).catch(err => console.error('Notification failed:', err));
         }
         
         setOrder(updatedOrder);
