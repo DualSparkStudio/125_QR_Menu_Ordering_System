@@ -81,12 +81,9 @@ export default function TablesPage() {
             {['available', 'occupied', 'reserved', 'maintenance'].map((s) => {
               const count = tables.filter((t) => t.status === s).length;
               return (
-                <div key={s} className="card p-4 flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${STATUS_DOT[s]}`} />
-                  <div>
-                    <p className="text-lg font-black text-gray-900">{count}</p>
-                    <p className="text-xs text-gray-400 capitalize">{s}</p>
-                  </div>
+                <div key={s} className="card p-4 flex flex-col items-center justify-center text-center gap-1">
+                  <p className="text-3xl font-black text-gray-900 leading-none">{count}</p>
+                  <p className="text-xs text-gray-400 capitalize leading-none">{s}</p>
                 </div>
               );
             })}

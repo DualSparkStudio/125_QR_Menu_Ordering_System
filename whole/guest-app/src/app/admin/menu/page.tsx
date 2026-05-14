@@ -58,9 +58,9 @@ export default function MenuPage() {
 
   return (
     <>
-      <div className="flex h-full">
+      <div className="flex flex-col lg:flex-row h-full">
         {/* Category sidebar */}
-        <div className="w-52 flex-shrink-0 border-r border-gray-100 bg-white flex flex-col">
+        <div className="w-full lg:w-52 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-100 bg-white flex flex-col">
           <div className="p-4 border-b border-gray-50">
             <div className="flex items-center justify-between mb-1">
               <h2 className="font-bold text-gray-900 text-sm">Categories</h2>
@@ -68,10 +68,10 @@ export default function MenuPage() {
             </div>
             <p className="text-xs text-gray-400">{totalItems} items total</p>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto p-2 space-x-0.5 lg:space-x-0 lg:space-y-0.5">
             {categories.map((cat) => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all ${activeCategory === cat.id ? 'bg-orange-50 text-orange-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                className={`flex-shrink-0 lg:w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all whitespace-nowrap lg:whitespace-normal ${activeCategory === cat.id ? 'bg-orange-50 text-orange-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <span className="text-sm font-medium truncate">{cat.icon && `${cat.icon} `}{cat.name}</span>
                 <span className="text-xs text-gray-300 flex-shrink-0 ml-1">{cat.items.length}</span>
               </button>
@@ -80,8 +80,8 @@ export default function MenuPage() {
         </div>
 
         {/* Items area */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="flex items-center justify-between mb-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <h1 className="text-xl font-black text-gray-900">
                 {categories.find((c) => c.id === activeCategory)?.icon} {categories.find((c) => c.id === activeCategory)?.name || 'Menu'}
@@ -102,26 +102,26 @@ export default function MenuPage() {
           ) : (
             <div className="space-y-2">
               {activeItems.map((item: any) => (
-                <div key={item.id} className="card p-4 flex items-center gap-4 hover:shadow-md transition-all">
+                <div key={item.id} className="card p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:shadow-md transition-all">
                   {item.image
                     ? <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
                     : <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">🍽️</div>
                   }
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className={`w-2.5 h-2.5 rounded-sm border-2 flex-shrink-0 ${item.isVegetarian ? 'border-green-600 bg-green-500' : 'border-red-600 bg-red-500'}`} />
                       <span className="font-bold text-gray-900 text-sm">{item.name}</span>
                       {item.isFeatured && <span className="badge bg-amber-50 text-amber-700 border border-amber-200">⭐ Featured</span>}
                       {item.spiceLevel > 0 && <span className="text-xs text-gray-400">{SPICE[item.spiceLevel]}</span>}
                     </div>
                     <p className="text-xs text-gray-400 truncate mb-1">{item.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                       <span className="font-bold text-gray-900">₹{item.basePrice}</span>
                       {item.calories && <span>{item.calories} cal</span>}
                       <span>~{item.preparationTime}min</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
                     <button onClick={() => adminApi.toggleItemAvailability(staff!.restaurantId, item.id, token!).then(load)}
                       className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all ${item.isAvailable ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}>
                       {item.isAvailable ? '● On' : '○ Off'}

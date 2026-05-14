@@ -156,8 +156,8 @@ export default function OrdersPage() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-black text-gray-900">Orders</h1>
           <p className="text-gray-400 text-xs mt-0.5">
@@ -214,7 +214,7 @@ export default function OrdersPage() {
             
             return (
               <div key={order.id} className="rounded-2xl overflow-hidden border-2 shadow-sm" style={{ backgroundColor: cardBgColor, borderColor: borderColor }}>
-                <div className="flex items-start gap-4 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4 p-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <span className="font-black text-gray-900 text-sm">#{order.orderNumber?.slice(-10)}</span>
@@ -236,8 +236,8 @@ export default function OrdersPage() {
                         const itemAge = getOrderAge(item.createdAt);
                         const isNewItem = itemAge < TIME_CONSTANTS.RECENT_ITEM_THRESHOLD && !isNew; // New item in existing order
                         return (
-                          <div key={item.id} className="flex items-center gap-3 rounded-lg p-3 border" style={{ backgroundColor: cardBgColor, borderColor: isNewItem ? '#60a5fa' : innerBorderColor }}>
-                            <div className="flex items-center gap-2 flex-1">
+                          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg p-3 border" style={{ backgroundColor: cardBgColor, borderColor: isNewItem ? '#60a5fa' : innerBorderColor }}>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
                               {isNewItem && <span className="text-blue-500 text-sm flex-shrink-0">🆕</span>}
                               <span className="text-gray-400 text-sm flex-shrink-0">×{item.quantity}</span>
                               <span className="flex-1 text-gray-700 text-sm font-medium">{item.menuItem?.name}</span>
@@ -269,7 +269,7 @@ export default function OrdersPage() {
                                   .finally(() => setUpdating(null));
                               }}
                               disabled={updating === item.id}
-                              className="text-xs px-3 py-1.5 rounded-lg border cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50 flex-shrink-0"
+                              className="text-xs px-3 py-1.5 rounded-lg border cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50 w-full sm:w-auto"
                               style={{ backgroundColor: cardBgColor, borderColor: innerBorderColor }}
                             >
                               <option value="pending">Pending</option>
@@ -287,7 +287,7 @@ export default function OrdersPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 flex-shrink-0">
                     <p className="font-black text-gray-900 text-lg">₹{order.totalAmount?.toFixed(0)}</p>
                     <div className="flex gap-1.5 flex-wrap justify-end items-center">
                       <button onClick={() => printBill(order)} className="text-xs px-3 py-2 rounded-xl border font-semibold transition-all hover:opacity-80" style={{ backgroundColor: cardBgColor, borderColor: innerBorderColor }}>🖨️ Bill</button>

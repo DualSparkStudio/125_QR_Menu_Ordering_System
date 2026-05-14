@@ -25,13 +25,13 @@ export default function ReportsPage() {
   const maxRevenue = report?.daily?.length ? Math.max(...report.daily.map((d: any) => d.revenue)) : 1;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <h1 className="text-xl font-black text-gray-900">Reports</h1>
-          <div className="flex items-center gap-2">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input text-xs py-2 w-36" />
-            <span className="text-gray-300">→</span>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input text-xs py-2 w-36" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input text-xs py-2 w-full sm:w-36" />
+            <span className="text-gray-300 hidden sm:inline">→</span>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input text-xs py-2 w-full sm:w-36" />
             <button onClick={load} className="btn-primary text-xs px-4 py-2">Generate</button>
           </div>
         </div>
