@@ -76,7 +76,7 @@ export async function showNotification(options: NotificationOptions): Promise<No
       
       // Trigger vibration separately if supported
       if (options.vibrate && 'vibrate' in navigator) {
-        navigator.vibrate(options.vibrate);
+        (navigator as any).vibrate(options.vibrate);
       }
       
       return null; // Service worker notifications don't return a Notification object
@@ -94,7 +94,7 @@ export async function showNotification(options: NotificationOptions): Promise<No
 
     // Vibrate if supported and pattern provided
     if (options.vibrate && 'vibrate' in navigator) {
-      navigator.vibrate(options.vibrate);
+      (navigator as any).vibrate(options.vibrate);
     }
 
     return notification;
