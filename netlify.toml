@@ -218,3 +218,9 @@
   from = "/api/payments/razorpay/verify"
   to = "/.netlify/functions/payments-razorpay-verify"
   status = 200
+
+# Catch-all for any other /api/* requests -> route to main api function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
