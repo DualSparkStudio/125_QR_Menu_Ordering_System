@@ -392,4 +392,52 @@ export class OrderService {
 
     return updated;
   }
+
+  async autoReleaseTables(restaurantId: string) {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    
+    // Find orders that are:
+    // 1. Older than 2 hours
+    // 2. Not completed
+    // 3. Not paid (paymentStatus !== 'completed')
+    const staleOrders = await this.prisma.order.findMany({
+      where: {
+        restaurantId,
+        createdAt: { lt: twoHoursAgo },
+        status: { notIn: ['completed', 'cancelled'] },
+        paymentStatus: { not: 'completed' },
+      },
+      include: { table: true },
+    });
+    
+    const releasedTables: string[] = [];
+    
+    for (const order of staleOrders) {
+      // Check if this table has any other active orders
+      const activeOrders = await this.prisma.order.count({
+        where: {
+          tableId: order.tableId,
+          id: { not: order.id },
+          status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+        },
+      });
+      
+      // If no other active orders, release the table
+      if (activeOrders === 0) {
+        await this.prisma.table.update({
+          where: { id: order.tableId },
+          data: { status: 'available' },
+        });
+        releasedTables.push(order.table.tableNumber);
+        
+        this.logger.log(`Auto-released table ${order.table.tableNumber} (order ${order.orderNumber} older than 2 hours and unpaid)`);
+      }
+    }
+    
+    return { 
+      message: `Released ${releasedTables.length} tables`,
+      releasedTables,
+      staleOrdersCount: staleOrders.length,
+    };
+  }
 }

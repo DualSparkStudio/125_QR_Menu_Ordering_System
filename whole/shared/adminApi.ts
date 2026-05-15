@@ -124,5 +124,9 @@ export function createAdminApi(baseUrl: string) {
     // Reports
     getSalesReport: (restaurantId: string, token: string, startDate: string, endDate: string) =>
       request(`/restaurants/${restaurantId}/reports/sales?startDate=${startDate}&endDate=${endDate}`, {}, token),
+
+    // Table auto-release
+    autoReleaseTables: (restaurantId: string, token: string) =>
+      request(`/admin/restaurants/${restaurantId}/tables/auto-release`, { method: "POST" }, token),
   };
 }

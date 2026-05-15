@@ -555,7 +555,36 @@ export const handler: Handler = async (event) => {
     p = matchPath('/orders/:id/mark-paid', rawPath);
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const updated = await getPrisma().order.update({ where: { id: p.id }, data: { paymentStatus: 'completed' } });
+      
+      const order = await getPrisma().order.findUnique({ 
+        where: { id: p.id },
+        include: { table: true }
+      });
+      
+      if (!order) return json(404, { message: 'Order not found' });
+      
+      const updated = await getPrisma().order.update({ 
+        where: { id: p.id }, 
+        data: { paymentStatus: 'completed' } 
+      });
+      
+      // Check if table can be freed (if order is completed and now paid)
+      if (updated.status === 'completed') {
+        const activeOrders = await getPrisma().order.count({
+          where: {
+            tableId: order.tableId,
+            status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+          },
+        });
+        
+        if (activeOrders === 0) {
+          await getPrisma().table.update({
+            where: { id: order.tableId },
+            data: { status: 'available' },
+          });
+        }
+      }
+      
       return json(200, updated);
     }
 
@@ -758,6 +787,57 @@ export const handler: Handler = async (event) => {
       if (q.endDate) where.createdAt = { ...where.createdAt, lte: new Date(q.endDate) };
       const agg = await getPrisma().order.aggregate({ where, _sum: { totalAmount: true }, _count: true });
       return json(200, { totalRevenue: agg._sum.totalAmount || 0, totalOrders: agg._count });
+    }
+
+    // ── AUTO-RELEASE TABLES ───────────────────────────────────────────────
+    // Release tables for orders older than 2 hours that are not paid
+    p = matchPath('/admin/restaurants/:restaurantId/tables/auto-release', rawPath);
+    if (p && method === 'POST') {
+      if (!token) return json(401, { message: 'Unauthorized' });
+      
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      
+      // Find orders that are:
+      // 1. Older than 2 hours
+      // 2. Not completed
+      // 3. Not paid (paymentStatus !== 'completed')
+      const staleOrders = await getPrisma().order.findMany({
+        where: {
+          restaurantId: p.restaurantId,
+          createdAt: { lt: twoHoursAgo },
+          status: { notIn: ['completed', 'cancelled'] },
+          paymentStatus: { not: 'completed' },
+        },
+        include: { table: true },
+      });
+      
+      const releasedTables: string[] = [];
+      
+      for (const order of staleOrders) {
+        // Check if this table has any other active orders
+        const activeOrders = await getPrisma().order.count({
+          where: {
+            tableId: order.tableId,
+            id: { not: order.id },
+            status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
+          },
+        });
+        
+        // If no other active orders, release the table
+        if (activeOrders === 0) {
+          await getPrisma().table.update({
+            where: { id: order.tableId },
+            data: { status: 'available' },
+          });
+          releasedTables.push(order.table.tableNumber);
+        }
+      }
+      
+      return json(200, { 
+        message: `Released ${releasedTables.length} tables`,
+        releasedTables,
+        staleOrdersCount: staleOrders.length,
+      });
     }
 
     return json(404, { message: `Route not found: ${method} ${rawPath}` });

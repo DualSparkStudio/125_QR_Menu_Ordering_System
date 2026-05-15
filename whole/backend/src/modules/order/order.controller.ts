@@ -90,4 +90,11 @@ export class OrderController {
   ) {
     return this.service.updateItemStatus(itemId, status);
   }
+
+  // Auto-release tables for orders older than 2 hours that are not paid
+  @Post('admin/restaurants/:restaurantId/tables/auto-release')
+  @UseGuards(JwtAuthGuard)
+  autoReleaseTables(@Param('restaurantId') restaurantId: string) {
+    return this.service.autoReleaseTables(restaurantId);
+  }
 }
