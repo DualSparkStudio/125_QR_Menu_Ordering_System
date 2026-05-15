@@ -134,6 +134,13 @@ export const api = {
     return req(url);
   },
   
+  getOrders: (tableId: string, sessionId?: string) => {
+    const url = sessionId 
+      ? `/tables/${tableId}/orders?sessionId=${encodeURIComponent(sessionId)}`
+      : `/tables/${tableId}/orders`;
+    return req(url);
+  },
+  
   getOrder: (orderId: string) =>
     req(`/orders/${orderId}`),
   

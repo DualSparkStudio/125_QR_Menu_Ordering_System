@@ -91,11 +91,22 @@ function MenuContent() {
       if (hasRedirected) return;
       
       try {
-        const orders: any = await api.getActiveOrders(table.id, sessionId);
+        // Get active orders (pending, confirmed, preparing, ready, served)
+        const activeOrders: any = await api.getActiveOrders(table.id, sessionId);
+        
+        // Also check for recently completed orders (within last 5 minutes) for this session
+        const allOrders: any = await api.getOrders(table.id, sessionId);
         
         console.log('🔍 Checking payment status:', {
-          ordersCount: orders.length,
-          orders: orders.map((o: any) => ({
+          activeOrdersCount: activeOrders.length,
+          allOrdersCount: allOrders.length,
+          activeOrders: activeOrders.map((o: any) => ({
+            id: o.id,
+            orderNumber: o.orderNumber,
+            status: o.status,
+            paymentStatus: o.paymentStatus,
+          })),
+          allOrders: allOrders.map((o: any) => ({
             id: o.id,
             orderNumber: o.orderNumber,
             status: o.status,
@@ -103,15 +114,16 @@ function MenuContent() {
           }))
         });
         
-        // Check if all orders are completed AND paid
-        const allCompletedAndPaid = orders.length > 0 && orders.every((o: any) => 
+        // Check if there are NO active orders AND there are completed+paid orders
+        const hasNoActiveOrders = activeOrders.length === 0;
+        const hasCompletedPaidOrders = allOrders.some((o: any) => 
           o.status === 'completed' && o.paymentStatus === 'completed'
         );
         
-        console.log('✅ All completed and paid?', allCompletedAndPaid);
+        console.log('✅ Should redirect?', { hasNoActiveOrders, hasCompletedPaidOrders });
         
-        if (allCompletedAndPaid) {
-          console.log('🎉 Clearing session and redirecting...');
+        if (hasNoActiveOrders && hasCompletedPaidOrders) {
+          console.log('🎉 Redirecting to home and clearing session...');
           hasRedirected = true;
           
           // Show notification ONCE using ref
@@ -120,7 +132,7 @@ function MenuContent() {
             try {
               showNotification({
                 title: 'Payment Completed!',
-                body: 'Thank you! Your table is now cleared.',
+                body: 'Thank you for dining with us!',
                 icon: '/icon.png',
                 vibrate: [200, 100, 200],
               });
@@ -134,7 +146,7 @@ function MenuContent() {
             }
           }
           
-          // Redirect to home FIRST, then clear session
+          // Redirect to home FIRST
           router.push('/');
           
           // Clear session and cart after a small delay to ensure navigation starts

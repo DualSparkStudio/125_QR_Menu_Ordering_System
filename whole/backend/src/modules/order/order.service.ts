@@ -326,6 +326,21 @@ export class OrderService {
     });
   }
 
+  async getAllOrdersForTable(tableId: string, sessionId?: string) {
+    const where: any = { tableId };
+    
+    // If sessionId provided, filter by it
+    if (sessionId) {
+      where.sessionId = sessionId;
+    }
+    
+    return this.prisma.order.findMany({
+      where,
+      include: { items: { include: { menuItem: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async checkAndFreeTable(tableId: string) {
     const activeOrders = await this.prisma.order.count({
       where: {

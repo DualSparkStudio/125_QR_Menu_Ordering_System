@@ -31,6 +31,15 @@ export class OrderController {
     return this.service.getActiveOrdersForTable(tableId, sessionId);
   }
 
+  // Guest: get all orders for table (including completed)
+  @Get('tables/:tableId/orders')
+  getAllOrders(
+    @Param('tableId') tableId: string,
+    @Query('sessionId') sessionId?: string,
+  ) {
+    return this.service.getAllOrdersForTable(tableId, sessionId);
+  }
+
   // Admin: get all orders
   @Get('restaurants/:restaurantId/orders')
   @UseGuards(JwtAuthGuard)
