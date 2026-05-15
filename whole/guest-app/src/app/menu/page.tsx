@@ -30,6 +30,7 @@ function MenuContent() {
   const [tableOccupied, setTableOccupied] = useState(false);
   const [occupiedByOther, setOccupiedByOther] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const hasNotifiedRef = useRef(false);
 
   // Initialize session on mount
   useEffect(() => {
@@ -92,24 +93,49 @@ function MenuContent() {
       try {
         const orders: any = await api.getActiveOrders(table.id, sessionId);
         
-        // If no active orders, it means all orders are completed and paid
-        if (orders.length === 0) {
+        console.log('🔍 Checking payment status:', {
+          ordersCount: orders.length,
+          orders: orders.map((o: any) => ({
+            id: o.id,
+            orderNumber: o.orderNumber,
+            status: o.status,
+            paymentStatus: o.paymentStatus,
+          }))
+        });
+        
+        // Check if all orders are completed AND paid
+        const allCompletedAndPaid = orders.length > 0 && orders.every((o: any) => 
+          o.status === 'completed' && o.paymentStatus === 'completed'
+        );
+        
+        console.log('✅ All completed and paid?', allCompletedAndPaid);
+        
+        if (allCompletedAndPaid) {
+          console.log('🎉 Clearing session and redirecting...');
           hasRedirected = true;
           
           // Clear session and cart
           clearSession();
+          clearCart(); // Force clear cart as well
           
-          // Show notification (non-blocking)
-          showNotification({
-            title: 'Payment Completed!',
-            body: 'Thank you! Your table is now cleared.',
-            icon: '/icon.png',
-            vibrate: [200, 100, 200],
-          }).catch(err => console.error('Notification failed:', err));
-          
-          // Vibrate
-          if ('vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200, 100, 200]);
+          // Show notification ONCE using ref
+          if (!hasNotifiedRef.current) {
+            hasNotifiedRef.current = true;
+            try {
+              showNotification({
+                title: 'Payment Completed!',
+                body: 'Thank you! Your table is now cleared.',
+                icon: '/icon.png',
+                vibrate: [200, 100, 200],
+              });
+            } catch (err) {
+              console.error('Notification failed:', err);
+            }
+            
+            // Vibrate
+            if ('vibrate' in navigator) {
+              navigator.vibrate([200, 100, 200, 100, 200]);
+            }
           }
           
           // Redirect to home immediately
@@ -123,8 +149,8 @@ function MenuContent() {
     // Check immediately on mount
     checkPaymentStatus();
 
-    // Check every 10 seconds (reduced from 5)
-    const interval = setInterval(checkPaymentStatus, 10000);
+    // Check every 5 seconds for faster response
+    const interval = setInterval(checkPaymentStatus, 5000);
     return () => clearInterval(interval);
   }, [table?.id, hasActiveSession, sessionId]);
 

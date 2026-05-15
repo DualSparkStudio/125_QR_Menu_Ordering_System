@@ -12,6 +12,7 @@ const STEPS = [
   { key: 'preparing', label: 'Preparing',      icon: '👨‍🍳', desc: 'Being cooked fresh' },
   { key: 'ready',     label: 'Ready',          icon: '🔔', desc: 'On its way to you' },
   { key: 'served',    label: 'Served',         icon: '🍽️', desc: 'Enjoy your meal!' },
+  { key: 'completed', label: 'Completed',      icon: '✨', desc: 'Thank you!' },
 ];
 
 function Confetti() {
@@ -47,8 +48,10 @@ function OrderContent() {
   const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' });
   const [reviewDone, setReviewDone] = useState(false);
   const [lastStatus, setLastStatus] = useState<string | null>(null);
+  const [lastPaymentStatus, setLastPaymentStatus] = useState<string | null>(null);
+  const hasNotifiedRef = useRef(false);
 
-  // Polling for real-time updates (replaces SSE)
+  // Fallback polling with notification tracking
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
 
@@ -56,27 +59,47 @@ function OrderContent() {
       try {
         const updatedOrder: any = await api.getOrder(id);
         
-        // Detect status change and trigger vibration
-        if (lastStatus && updatedOrder.status !== lastStatus) {
-          // Show browser notification for status change (non-blocking)
-          showNotification({
-            title: `Order #${updatedOrder.orderNumber}`,
-            body: `Status updated to: ${updatedOrder.status}`,
-            icon: '/icon.png',
-            vibrate: [200, 100, 200],
-          }).catch(err => console.error('Notification failed:', err));
+        // Check if order is completed AND paid - redirect to home
+        if (updatedOrder.status === 'completed' && updatedOrder.paymentStatus === 'completed') {
+          console.log('🎉 Order completed and paid (polling) - redirecting to home...');
+          
+          // Show notification only once
+          if (!hasNotifiedRef.current) {
+            hasNotifiedRef.current = true;
+            
+            try {
+              showNotification({
+                title: 'Payment Completed!',
+                body: 'Thank you for dining with us!',
+                icon: '/icon.png',
+                vibrate: [200, 100, 200],
+              });
+            } catch (err) {
+              console.error('Notification failed:', err);
+            }
+            
+            // Vibrate
+            if ('vibrate' in navigator) {
+              navigator.vibrate([200, 100, 200, 100, 200]);
+            }
+          }
+          
+          // Redirect to home
+          router.push('/');
+          return;
         }
         
         setOrder(updatedOrder);
         setLastStatus(updatedOrder.status);
+        setLastPaymentStatus(updatedOrder.paymentStatus);
         if (loading) setLoading(false);
       } catch (err) {
         console.error('Poll error:', err);
       }
     };
 
-    // Poll every 2 seconds for real-time updates
-    pollInterval = setInterval(pollOrder, 2000);
+    // Poll every 5 seconds
+    pollInterval = setInterval(pollOrder, 5000);
 
     // Initialize notifications
     initializeNotifications();
@@ -84,7 +107,7 @@ function OrderContent() {
     return () => {
       clearInterval(pollInterval);
     };
-  }, [id, lastStatus, loading]);
+  }, [id, loading]);
 
   // Fallback: initial load
   useEffect(() => {
@@ -168,11 +191,11 @@ function OrderContent() {
 
       <div className="max-w-2xl mx-auto px-4 pt-5 pb-10 space-y-4">
         {/* Confirmation banner */}
-        {isNew && !isCancelled && !isCompleted && (
+        {!isCancelled && !isCompleted && (
           <div className="card p-6 text-center border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 shadow-lg shadow-orange-100 slide-up">
-            <div className="text-5xl mb-3">{isPaid ? '🎊' : '🎉'}</div>
-            <h2 className="text-2xl font-black text-stone-900 mb-1">{isPaid ? 'Payment Successful!' : 'Order Confirmed!'}</h2>
-            <p className="text-stone-500 text-sm">{isPaid ? `₹${order.totalAmount?.toFixed(0)} paid · Your food is being prepared` : 'Sit back and relax — your order is in the kitchen'}</p>
+            <div className="text-5xl mb-3">{currentStep.icon}</div>
+            <h2 className="text-2xl font-black text-stone-900 mb-1">{currentStep.label}</h2>
+            <p className="text-stone-500 text-sm">{currentStep.desc}</p>
           </div>
         )}
 
@@ -342,11 +365,21 @@ function OrderContent() {
         )}
 
         {/* Actions */}
-        <div className="grid grid-cols-1 gap-3 pb-4">
-          <Link href={`/menu?table=${order.table?.qrCode || order.table?.tableNumber}`} className="card border-2 border-orange-200 text-orange-600 font-bold py-4 rounded-2xl text-center text-sm hover:bg-orange-50 transition-all flex items-center justify-center gap-2">
-            🍽️ Order More
-          </Link>
-        </div>
+        {!isPaidOrder && (
+          <div className="grid grid-cols-1 gap-3 pb-4">
+            <Link href={`/menu?table=${order.table?.qrCode || order.table?.tableNumber}`} className="card border-2 border-orange-200 text-orange-600 font-bold py-4 rounded-2xl text-center text-sm hover:bg-orange-50 transition-all flex items-center justify-center gap-2">
+              🍽️ Order More
+            </Link>
+          </div>
+        )}
+        
+        {isPaidOrder && (
+          <div className="card p-5 text-center border-2 border-green-200 bg-green-50">
+            <div className="text-3xl mb-2">✅</div>
+            <p className="text-green-700 font-bold text-sm">Order completed and paid</p>
+            <p className="text-green-600 text-xs mt-1">Thank you for dining with us!</p>
+          </div>
+        )}
       </div>
     </div>
   );

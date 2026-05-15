@@ -27,7 +27,7 @@ import {
 } from '../../../../../shared/notificationUtils';
 
 export default function OrdersPage() {
-  const { staff, token, isAuthenticated } = useAuthStore();
+  const { staff, token, isAuthenticated, hydrated } = useAuthStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
@@ -35,10 +35,10 @@ export default function OrdersPage() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (hydrated && !isAuthenticated) {
       window.location.href = '/admin';
     }
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, hydrated]);
 
   const load = async () => {
     if (!staff?.restaurantId || !token) { setLoading(false); return; }
@@ -146,12 +146,9 @@ export default function OrdersPage() {
     </div>
   );
 
-  if (!isAuthenticated) return (
+  if (!hydrated || !isAuthenticated) return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <p className="text-gray-500 mb-4">Please log in to view orders</p>
-        <a href="/admin" className="btn-primary">Go to Login</a>
-      </div>
+      <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
@@ -235,10 +232,17 @@ export default function OrdersPage() {
                       {order.items?.map((item: any) => {
                         const itemAge = getOrderAge(item.createdAt);
                         const isNewItem = itemAge < TIME_CONSTANTS.RECENT_ITEM_THRESHOLD && !isNew; // New item in existing order
+                        const isPendingItem = item.status === 'pending';
+                        
+                        // Items always inherit order card colors
+                        let itemBgColor = cardBgColor;
+                        let itemBorderColor = isNewItem ? '#60a5fa' : innerBorderColor;
+                        
                         return (
-                          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg p-3 border" style={{ backgroundColor: cardBgColor, borderColor: isNewItem ? '#60a5fa' : innerBorderColor }}>
+                          <div key={item.id} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg p-3 border-2" style={{ backgroundColor: itemBgColor, borderColor: itemBorderColor }}>
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               {isNewItem && <span className="text-blue-500 text-sm flex-shrink-0">🆕</span>}
+                              {isPendingItem && <span className="text-amber-600 text-sm flex-shrink-0 font-bold">⚠️</span>}
                               <span className="text-gray-400 text-sm flex-shrink-0">×{item.quantity}</span>
                               <span className="flex-1 text-gray-700 text-sm font-medium">{item.menuItem?.name}</span>
                             </div>
@@ -269,13 +273,12 @@ export default function OrdersPage() {
                                   .finally(() => setUpdating(null));
                               }}
                               disabled={updating === item.id}
-                              className="text-xs px-3 py-1.5 rounded-lg border cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50 w-full sm:w-auto"
-                              style={{ backgroundColor: cardBgColor, borderColor: innerBorderColor }}
+                              className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer focus:outline-none focus:border-orange-400 disabled:opacity-50 w-full sm:w-auto font-semibold ${STATUS_COLORS[item.status || 'pending']}`}
+                              style={{ backgroundColor: itemBgColor, borderColor: itemBorderColor }}
                             >
-                              <option value="pending">Pending</option>
-                              <option value="preparing">Cooking</option>
-                              <option value="ready">Ready</option>
-                              <option value="served">Served</option>
+                              {STATUS_OPTIONS.map((s) => (
+                                <option key={s.value} value={s.value} className="text-gray-700">{s.label}</option>
+                              ))}
                             </select>
                           </div>
                         );

@@ -21,18 +21,24 @@ const NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { staff, token, logout, isAuthenticated } = useAuthStore();
+  const { staff, token, logout, isAuthenticated, hydrated } = useAuthStore();
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (!isAuthenticated) router.replace('/admin');
-  }, [isAuthenticated, router]);
+  }, []);
 
-  // Show spinner while checking auth / redirecting
-  if (!mounted || !isAuthenticated) {
+  useEffect(() => {
+    // Only redirect after hydration is complete
+    if (hydrated && !isAuthenticated) {
+      router.replace('/admin');
+    }
+  }, [isAuthenticated, hydrated, router]);
+
+  // Show spinner while checking auth / redirecting or while hydrating
+  if (!mounted || !hydrated || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />

@@ -139,22 +139,30 @@ export class OrderService {
 
     if (menuItems.length !== dto.items.length) throw new BadRequestException('Some items are unavailable');
 
-    // Add new items to order
+    // ALWAYS create new OrderItem records for newly added items
+    // This allows tracking which items are new vs already served/completed
     let additionalSubtotal = 0;
-    const newOrderItems = dto.items.map((item) => {
+    const itemsToCreate: Array<any> = [];
+
+    for (const item of dto.items) {
       const mi = menuItems.find((m: any) => m.id === item.menuItemId)!;
       additionalSubtotal += mi.basePrice * item.quantity;
-      return {
+
+      // Always create new OrderItem record with status='pending'
+      // This way admin can see which items are new additions
+      itemsToCreate.push({
         orderId,
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         price: mi.basePrice,
+        status: 'pending', // New items always start as pending
         selectedVariants: item.selectedVariants ? JSON.stringify(item.selectedVariants) : null,
         specialInstructions: item.specialInstructions,
-      };
-    });
+      });
+    }
 
-    await this.prisma.orderItem.createMany({ data: newOrderItems });
+    // Create new items
+    await this.prisma.orderItem.createMany({ data: itemsToCreate });
 
     // Recalculate totals
     const newSubtotal = order.subtotal + additionalSubtotal;
@@ -275,7 +283,15 @@ export class OrderService {
       }
     }
 
+    // Update order status
     const updated = await this.prisma.order.update({ where: { id }, data: updates });
+
+    // Update all items to match the order status
+    const itemStatus = getItemStatusFromOrderStatus(dto.status);
+    await this.prisma.orderItem.updateMany({
+      where: { orderId: id },
+      data: { status: itemStatus },
+    });
 
     // Check if order is completed and paid, then free the table
     if (dto.status === 'completed' && updated.paymentStatus === 'completed') {
