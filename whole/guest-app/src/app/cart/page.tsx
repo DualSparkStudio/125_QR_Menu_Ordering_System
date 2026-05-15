@@ -112,25 +112,29 @@ export default function CartPage() {
       setCurrentOrder(order);
       setActiveSession(true);
       
-      // Navigate first to ensure user sees confirmation page
+      // Show browser notification (non-blocking, ignore errors)
+      try {
+        await showNotification({
+          title: '🎉 Order Placed!',
+          body: `Order #${order.orderNumber?.slice(-6)} has been placed successfully`,
+          icon: '/icon.png',
+        });
+      } catch (notifErr) {
+        console.error('Notification failed:', notifErr);
+      }
+      
+      // Navigate to order details page first
       router.push(`/orders/${order.id}?new=1`);
       
-      // Show browser notification (non-blocking)
-      showNotification({
-        title: '🎉 Order Placed!',
-        body: `Order #${order.orderNumber?.slice(-6)} has been placed successfully`,
-        icon: '/icon.png',
-      }).catch(err => console.error('Notification failed:', err));
-      
-      // Clear cart after a tiny delay to ensure navigation started
-      setTimeout(() => clearCart(), 100);
+      // Clear cart after navigation starts (prevents empty cart UI from showing)
+      setTimeout(() => clearCart(), 50);
     } catch (e: any) { 
       setError(e.message); 
       setLoading(false); 
     }
   };
 
-  if (cart.length === 0) return (
+  if (cart.length === 0 && !loading) return (
     <div className="min-h-screen hero-bg flex flex-col items-center justify-center p-6">
       <div className="card p-10 max-w-sm w-full text-center shadow-lg shadow-orange-100">
         <div className="text-6xl mb-4">🛒</div>
