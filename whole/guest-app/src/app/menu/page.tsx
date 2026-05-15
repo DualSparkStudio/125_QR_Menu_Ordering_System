@@ -114,10 +114,6 @@ function MenuContent() {
           console.log('🎉 Clearing session and redirecting...');
           hasRedirected = true;
           
-          // Clear session and cart
-          clearSession();
-          clearCart(); // Force clear cart as well
-          
           // Show notification ONCE using ref
           if (!hasNotifiedRef.current) {
             hasNotifiedRef.current = true;
@@ -138,8 +134,14 @@ function MenuContent() {
             }
           }
           
-          // Redirect to home immediately
+          // Redirect to home FIRST, then clear session
           router.push('/');
+          
+          // Clear session and cart after a small delay to ensure navigation starts
+          setTimeout(() => {
+            clearSession();
+            clearCart();
+          }, 100);
         }
       } catch (err) {
         console.error('Failed to check payment status:', err);
