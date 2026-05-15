@@ -337,6 +337,29 @@ export const handler: Handler = async (event) => {
       return json(200, orders);
     }
 
+    // Public route: Get all orders for a table (including completed)
+    p = matchPath('/tables/:tableId/orders', rawPath);
+    if (p && method === 'GET') {
+      const where: any = {
+        tableId: p.tableId,
+      };
+      
+      // Filter by sessionId if provided
+      if (q.sessionId) {
+        where.sessionId = q.sessionId;
+      }
+      
+      const orders = await getPrisma().order.findMany({
+        where,
+        include: {
+          items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
+          table: { select: { id: true, tableNumber: true, section: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return json(200, orders);
+    }
+
     // Public route: Create order for a table
     p = matchPath('/restaurants/:restaurantId/tables/:tableId/orders', rawPath);
     if (p && method === 'POST') {
