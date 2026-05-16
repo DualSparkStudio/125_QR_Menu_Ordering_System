@@ -194,12 +194,19 @@ function MenuContent() {
       console.log('No table ID available');
       return;
     }
-    console.log('Loading active orders for table:', table.id, 'session:', sessionId);
+    console.log('Loading orders for table:', table.id, 'session:', sessionId);
     setLoadingOrders(true);
     try {
-      const orders: any = await api.getActiveOrders(table.id, sessionId);
-      console.log('Active orders received:', orders);
-      setActiveOrders(orders);
+      // Get ALL orders (including completed but unpaid)
+      const orders: any = await api.getOrders(table.id, sessionId);
+      console.log('Orders received:', orders);
+      
+      // Filter out only completed+paid orders (those should not show in "My Orders")
+      const visibleOrders = orders.filter((o: any) => 
+        !(o.status === 'completed' && o.paymentStatus === 'completed')
+      );
+      
+      setActiveOrders(visibleOrders);
     } catch (err) {
       console.error('Failed to load orders:', err);
       setActiveOrders([]);

@@ -48,7 +48,15 @@ export interface NotificationOptions {
 }
 
 export async function showNotification(options: NotificationOptions): Promise<Notification | null> {
-  if (!canShowNotifications()) {
+  // Check if notifications are supported
+  if (!('Notification' in window)) {
+    console.warn('Notifications not supported in this browser');
+    return null;
+  }
+
+  // Check permission
+  if (Notification.permission !== 'granted') {
+    console.warn('Notification permission not granted. Current permission:', Notification.permission);
     return null;
   }
 
@@ -73,6 +81,7 @@ export async function showNotification(options: NotificationOptions): Promise<No
       }
       
       await registration.showNotification(options.title, notificationOptions);
+      console.log('Notification shown via service worker');
       
       // Trigger vibration separately if supported
       if (options.vibrate && 'vibrate' in navigator) {
@@ -91,6 +100,8 @@ export async function showNotification(options: NotificationOptions): Promise<No
       requireInteraction: options.requireInteraction ?? true,
       silent: options.silent ?? false,
     });
+
+    console.log('Notification shown via Notification API');
 
     // Vibrate if supported and pattern provided
     if (options.vibrate && 'vibrate' in navigator) {
@@ -153,8 +164,25 @@ export async function notifyOrderStatus(orderNumber: string, status: string): Pr
 /**
  * Initialize notifications (request permission on first load)
  */
-export function initializeNotifications(): void {
-  if ('Notification' in window && Notification.permission === 'default') {
-    requestNotificationPermission();
+export async function initializeNotifications(): Promise<void> {
+  // Check if browser supports notifications
+  if (!('Notification' in window)) {
+    console.warn('This browser does not support notifications');
+    return;
+  }
+
+  // Register service worker if not already registered
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/sw.js');
+      console.log('Service Worker registered for notifications');
+    } catch (error) {
+      console.error('Failed to register service worker:', error);
+    }
+  }
+
+  // Request permission if not already granted or denied
+  if (Notification.permission === 'default') {
+    await requestNotificationPermission();
   }
 }

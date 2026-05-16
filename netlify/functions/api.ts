@@ -2,6 +2,7 @@ import { Handler, HandlerEvent } from '@netlify/functions';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import { generateOrderNumber, calculateOrderTotals } from '../../whole/shared/orderUtils';
 
 let prisma: PrismaClient;
@@ -11,11 +12,57 @@ const getPrisma = () => {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL environment variable is not set');
     }
-    prisma = new PrismaClient();
+    prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+      // Optimize connection pool for serverless
+      // @ts-ignore - Prisma doesn't expose these types but they work
+      __internal: {
+        engine: {
+          connection_limit: 10,
+          pool_timeout: 10,
+        },
+      },
+    });
   }
   return prisma;
 };
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+
+// Helper function to send push notifications
+const sendPushNotification = async (restaurantId: string, title: string, body: string, data?: any) => {
+  try {
+    // Only send if VAPID keys are configured
+    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+      console.log('[push] VAPID keys not configured, skipping push notification');
+      return;
+    }
+
+    const response = await fetch(`${process.env.URL || 'http://localhost:8888'}/.netlify/functions/push-send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        restaurantId,
+        userType: 'admin',
+        title,
+        body,
+        data,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('[push] Failed to send notification:', await response.text());
+    } else {
+      console.log('[push] Notification sent successfully');
+    }
+  } catch (err) {
+    console.error('[push] Error sending notification:', err);
+  }
+};
 
 const json = (statusCode: number, body: any, cacheControl?: string) => ({
   statusCode,
@@ -150,16 +197,28 @@ export const handler: Handler = async (event) => {
       const today = new Date(new Date().setHours(0, 0, 0, 0));
       const db = getPrisma();
 
-      // Run sequentially to avoid connection pool exhaustion (connection_limit=1)
-      const totalTables = await db.table.count({ where: { restaurantId: rid, isActive: true } });
-      const occupiedTables = await db.table.count({ where: { restaurantId: rid, status: 'occupied' } });
-      const availableTables = await db.table.count({ where: { restaurantId: rid, status: 'available' } });
-      const todayOrders = await db.order.count({ where: { restaurantId: rid, createdAt: { gte: today } } });
-      const pendingOrders = await db.order.count({ where: { restaurantId: rid, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } });
-      const todayRevenue = await db.order.aggregate({ where: { restaurantId: rid, status: 'completed', createdAt: { gte: today } }, _sum: { totalAmount: true } });
-      const totalRevenue = await db.order.aggregate({ where: { restaurantId: rid, status: 'completed' }, _sum: { totalAmount: true } });
-      const pendingWaiterCalls = await db.waiterCall.count({ where: { restaurantId: rid, status: 'pending' } });
-      const reviewStats = await db.review.aggregate({ where: { restaurantId: rid }, _avg: { foodRating: true, serviceRating: true } });
+      // Run in parallel for better performance
+      const [
+        totalTables,
+        occupiedTables,
+        availableTables,
+        todayOrders,
+        pendingOrders,
+        todayRevenue,
+        totalRevenue,
+        pendingWaiterCalls,
+        reviewStats
+      ] = await Promise.all([
+        db.table.count({ where: { restaurantId: rid, isActive: true } }),
+        db.table.count({ where: { restaurantId: rid, status: 'occupied' } }),
+        db.table.count({ where: { restaurantId: rid, status: 'available' } }),
+        db.order.count({ where: { restaurantId: rid, createdAt: { gte: today } } }),
+        db.order.count({ where: { restaurantId: rid, status: { in: ['pending', 'confirmed', 'preparing', 'ready'] } } }),
+        db.order.aggregate({ where: { restaurantId: rid, status: 'completed', createdAt: { gte: today } }, _sum: { totalAmount: true } }),
+        db.order.aggregate({ where: { restaurantId: rid, status: 'completed' }, _sum: { totalAmount: true } }),
+        db.waiterCall.count({ where: { restaurantId: rid, status: 'pending' } }),
+        db.review.aggregate({ where: { restaurantId: rid }, _avg: { foodRating: true, serviceRating: true } })
+      ]);
 
       return json(200, {
         tables: { total: totalTables, occupied: occupiedTables, available: availableTables },
@@ -293,10 +352,22 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/menu/items/:id/toggle-availability', rawPath);
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const item = await getPrisma().menuItem.findUnique({ where: { id: p.id } });
-      if (!item) return json(404, { message: 'Not found' });
-      const updated = await getPrisma().menuItem.update({ where: { id: p.id }, data: { isAvailable: !item.isAvailable } });
-      return json(200, updated);
+      
+      // Use atomic update with Prisma's increment/decrement pattern
+      try {
+        const updated = await getPrisma().$executeRaw`
+          UPDATE "MenuItem" 
+          SET "isAvailable" = NOT "isAvailable", "updatedAt" = NOW()
+          WHERE id = ${p.id}
+          RETURNING *
+        `;
+        
+        // Fetch the updated item to return
+        const item = await getPrisma().menuItem.findUnique({ where: { id: p.id } });
+        return json(200, item);
+      } catch (err) {
+        return json(404, { message: 'Not found' });
+      }
     }
 
     p = matchPath('/restaurants/:restaurantId/menu/items/:id', rawPath);
@@ -381,12 +452,22 @@ export const handler: Handler = async (event) => {
 
       // If existing order found, add items to it instead of creating new order
       if (existingOrder) {
-        // Fetch menu items and calculate additional subtotal
+        // Batch fetch all menu items in one query
+        const menuItemIds = items.map(item => item.menuItemId);
+        const menuItems = await getPrisma().menuItem.findMany({
+          where: { id: { in: menuItemIds } },
+          select: { id: true, basePrice: true }
+        });
+        
+        // Create a map for O(1) lookup
+        const menuItemMap = new Map(menuItems.map(mi => [mi.id, mi]));
+        
+        // Calculate prices and build items array
         const itemsWithPrices = [];
         let additionalSubtotal = 0;
         
         for (const item of items) {
-          const menuItem = await getPrisma().menuItem.findUnique({ where: { id: item.menuItemId } });
+          const menuItem = menuItemMap.get(item.menuItemId);
           if (!menuItem) continue;
           
           const price = menuItem.basePrice;
@@ -441,6 +522,14 @@ export const handler: Handler = async (event) => {
               status: 'pending',
             },
           });
+
+          // Send push notification to admin
+          await sendPushNotification(
+            p.restaurantId,
+            'Order Updated',
+            `Order #${existingOrder.orderNumber.slice(-8)} - ${items.length} item(s) added`,
+            { orderId: updatedOrder.id, orderNumber: existingOrder.orderNumber, tableNumber: updatedOrder.table.tableNumber }
+          );
         } catch (notifErr) {
           console.error('Failed to create notification:', notifErr);
           // Don't fail the order if notification fails
@@ -450,12 +539,22 @@ export const handler: Handler = async (event) => {
       }
 
       // No existing order - create new one
-      // Fetch menu items and calculate totals
+      // Batch fetch all menu items in one query
+      const menuItemIds = items.map(item => item.menuItemId);
+      const menuItems = await getPrisma().menuItem.findMany({
+        where: { id: { in: menuItemIds } },
+        select: { id: true, basePrice: true }
+      });
+      
+      // Create a map for O(1) lookup
+      const menuItemMap = new Map(menuItems.map(mi => [mi.id, mi]));
+      
+      // Calculate totals and build items array
       const itemsWithPrices = [];
       let subtotal = 0;
       
       for (const item of items) {
-        const menuItem = await getPrisma().menuItem.findUnique({ where: { id: item.menuItemId } });
+        const menuItem = menuItemMap.get(item.menuItemId);
         if (!menuItem) continue;
         
         const price = menuItem.basePrice;
@@ -539,6 +638,14 @@ export const handler: Handler = async (event) => {
             status: 'pending',
           },
         });
+
+        // Send push notification to admin
+        await sendPushNotification(
+          p.restaurantId,
+          'New Order',
+          `Order #${orderNumber.slice(-8)} from Table ${order.table.tableNumber}`,
+          { orderId: order.id, orderNumber, tableNumber: order.table.tableNumber }
+        );
       } catch (notifErr) {
         console.error('Failed to create notification:', notifErr);
         // Don't fail the order if notification fails
@@ -553,16 +660,11 @@ export const handler: Handler = async (event) => {
       const where: any = { restaurantId: p.restaurantId };
       if (q.status) where.status = q.status;
       if (q.tableId) where.tableId = q.tableId;
-      console.log(`[orders] fetching for restaurantId: ${p.restaurantId}, filter:`, where);
-      const db = getPrisma();
-      const totalCount = await db.order.count({});
-      const matchCount = await db.order.count({ where: { restaurantId: p.restaurantId } });
-      console.log(`[orders] total orders in DB: ${totalCount}, matching restaurantId: ${matchCount}`);
-      // Log the actual restaurantIds in DB to find the mismatch
-      const sampleOrders = await db.order.findMany({ take: 3, select: { restaurantId: true } });
-      console.log(`[orders] sample restaurantIds in DB:`, sampleOrders.map(o => o.restaurantId));
-      const restaurants = await db.restaurant.findMany({ select: { id: true, name: true } });
-      console.log(`[orders] restaurants in DB:`, restaurants);
+      
+      // Pagination
+      const limit = q.limit ? Math.min(parseInt(q.limit), 100) : 50; // Cap at 100
+      const skip = q.skip ? parseInt(q.skip) : 0;
+      
       const orders = await getPrisma().order.findMany({
         where,
         include: {
@@ -571,6 +673,8 @@ export const handler: Handler = async (event) => {
           restaurant: { select: { id: true, name: true, address: true, phone: true, email: true, taxPercentage: true, serviceChargePercentage: true } },
         },
         orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: skip,
       });
       return json(200, orders);
     }
@@ -643,6 +747,14 @@ export const handler: Handler = async (event) => {
               status: 'pending',
             },
           });
+
+          // Send push notification to admin
+          await sendPushNotification(
+            updated.restaurantId,
+            statusMessages[status],
+            `Order #${updated.orderNumber.slice(-8)} from Table ${updated.table.tableNumber}`,
+            { orderId: updated.id, orderNumber: updated.orderNumber, status }
+          );
         }
       } catch (notifErr) {
         console.error('Failed to create notification:', notifErr);
@@ -687,9 +799,11 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'GET') {
+        const limit = q.limit ? Math.min(parseInt(q.limit), 100) : 50; // Cap at 100
         const staff = await getPrisma().staff.findMany({
           where: { restaurantId: p.restaurantId },
           select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true, lastLoginAt: true },
+          take: limit,
         });
         return json(200, staff);
       }
@@ -721,7 +835,12 @@ export const handler: Handler = async (event) => {
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
       if (method === 'GET') {
-        const coupons = await getPrisma().coupon.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
+        const limit = q.limit ? Math.min(parseInt(q.limit), 100) : 50; // Cap at 100
+        const coupons = await getPrisma().coupon.findMany({ 
+          where: { restaurantId: p.restaurantId }, 
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+        });
         return json(200, coupons);
       }
       if (method === 'POST') {
@@ -733,10 +852,21 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/coupons/:id/toggle', rawPath);
     if (p && method === 'PUT') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const coupon = await getPrisma().coupon.findUnique({ where: { id: p.id } });
-      if (!coupon) return json(404, { message: 'Not found' });
-      const updated = await getPrisma().coupon.update({ where: { id: p.id }, data: { isActive: !coupon.isActive } });
-      return json(200, updated);
+      
+      // Use atomic update
+      try {
+        await getPrisma().$executeRaw`
+          UPDATE "Coupon" 
+          SET "isActive" = NOT "isActive", "updatedAt" = NOW()
+          WHERE id = ${p.id}
+        `;
+        
+        // Fetch the updated coupon to return
+        const coupon = await getPrisma().coupon.findUnique({ where: { id: p.id } });
+        return json(200, coupon);
+      } catch (err) {
+        return json(404, { message: 'Not found' });
+      }
     }
 
     p = matchPath('/restaurants/:restaurantId/coupons/:id', rawPath);
@@ -760,7 +890,12 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/reviews', rawPath);
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const reviews = await getPrisma().review.findMany({ where: { restaurantId: p.restaurantId }, orderBy: { createdAt: 'desc' } });
+      const limit = q.limit ? Math.min(parseInt(q.limit), 100) : 50; // Cap at 100
+      const reviews = await getPrisma().review.findMany({ 
+        where: { restaurantId: p.restaurantId }, 
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+      });
       return json(200, reviews);
     }
 
@@ -768,7 +903,7 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/notifications', rawPath);
     if (p && method === 'GET') {
       if (!token) return json(401, { message: 'Unauthorized' });
-      const limit = q.limit ? parseInt(q.limit) : 50;
+      const limit = q.limit ? Math.min(parseInt(q.limit), 100) : 50; // Cap at 100
       const notifications = await getPrisma().notification.findMany({
         where: { restaurantId: p.restaurantId },
         include: { order: { select: { orderNumber: true, table: { select: { tableNumber: true } } } } },
@@ -820,45 +955,61 @@ export const handler: Handler = async (event) => {
       
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       
-      // Find orders that are:
-      // 1. Older than 2 hours
-      // 2. Not completed
-      // 3. Not paid (paymentStatus !== 'completed')
-      const staleOrders = await getPrisma().order.findMany({
-        where: {
-          restaurantId: p.restaurantId,
-          createdAt: { lt: twoHoursAgo },
-          status: { notIn: ['completed', 'cancelled'] },
-          paymentStatus: { not: 'completed' },
-        },
-        include: { table: true },
-      });
-      
-      const releasedTables: string[] = [];
-      
-      for (const order of staleOrders) {
-        // Check if this table has any other active orders
-        const activeOrders = await getPrisma().order.count({
+      // Find stale orders and get all active orders in parallel
+      const [staleOrders, allActiveOrders] = await Promise.all([
+        getPrisma().order.findMany({
           where: {
-            tableId: order.tableId,
-            id: { not: order.id },
+            restaurantId: p.restaurantId,
+            createdAt: { lt: twoHoursAgo },
+            status: { notIn: ['completed', 'cancelled'] },
+            paymentStatus: { not: 'completed' },
+          },
+          include: { table: true },
+        }),
+        getPrisma().order.findMany({
+          where: {
+            restaurantId: p.restaurantId,
             status: { in: ['pending', 'confirmed', 'preparing', 'ready', 'served'] },
           },
-        });
+          select: { tableId: true, id: true },
+        })
+      ]);
+      
+      // Group active orders by tableId for O(1) lookup
+      const activeOrdersByTable = new Map<string, Set<string>>();
+      for (const order of allActiveOrders) {
+        if (!activeOrdersByTable.has(order.tableId)) {
+          activeOrdersByTable.set(order.tableId, new Set());
+        }
+        activeOrdersByTable.get(order.tableId)!.add(order.id);
+      }
+      
+      // Identify tables to release
+      const tablesToRelease: string[] = [];
+      const releasedTableNumbers: string[] = [];
+      
+      for (const order of staleOrders) {
+        const activeOrders = activeOrdersByTable.get(order.tableId);
+        const hasOtherActiveOrders = activeOrders && 
+          Array.from(activeOrders).some(id => id !== order.id);
         
-        // If no other active orders, release the table
-        if (activeOrders === 0) {
-          await getPrisma().table.update({
-            where: { id: order.tableId },
-            data: { status: 'available' },
-          });
-          releasedTables.push(order.table.tableNumber);
+        if (!hasOtherActiveOrders && !tablesToRelease.includes(order.tableId)) {
+          tablesToRelease.push(order.tableId);
+          releasedTableNumbers.push(order.table.tableNumber);
         }
       }
       
+      // Batch update all tables at once
+      if (tablesToRelease.length > 0) {
+        await getPrisma().table.updateMany({
+          where: { id: { in: tablesToRelease } },
+          data: { status: 'available' },
+        });
+      }
+      
       return json(200, { 
-        message: `Released ${releasedTables.length} tables`,
-        releasedTables,
+        message: `Released ${tablesToRelease.length} tables`,
+        releasedTables: releasedTableNumbers,
         staleOrdersCount: staleOrders.length,
       });
     }

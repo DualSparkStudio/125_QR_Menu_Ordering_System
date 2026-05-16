@@ -76,6 +76,7 @@ export default function OrdersPage() {
     // Initialize notifications on mount
     initializeNotifications();
     
+    // Reduced polling interval for faster updates
     const t = setInterval(load, TIME_CONSTANTS.POLLING_INTERVAL);
     return () => clearInterval(t);
   }, [filter, staff, token]);

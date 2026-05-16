@@ -115,7 +115,7 @@ export const TIME_CONSTANTS = {
   NEW_ORDER_THRESHOLD: 2,
   DELAYED_ORDER_THRESHOLD: 20,
   RECENT_ITEM_THRESHOLD: 2,
-  POLLING_INTERVAL: 20000, // 20 seconds in milliseconds
+  POLLING_INTERVAL: 10000, // 10 seconds in milliseconds (reduced from 20 for faster updates)
 };
 
 // Card Colors for Order Highlighting
