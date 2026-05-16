@@ -52,7 +52,22 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
-      setContext: (tableId, restaurantId) => set({ tableId, restaurantId }),
+      setContext: (tableId, restaurantId) => {
+        const currentTableId = get().tableId;
+        
+        // If switching to a different table, clear the cart
+        if (currentTableId && currentTableId !== tableId) {
+          set({ 
+            tableId, 
+            restaurantId, 
+            cart: [], 
+            hasActiveSession: false,
+            sessionId: generateSessionId() 
+          });
+        } else {
+          set({ tableId, restaurantId });
+        }
+      },
 
       addToCart: (item) =>
         set((state) => {
