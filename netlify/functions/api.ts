@@ -831,6 +831,71 @@ export const handler: Handler = async (event) => {
     }
 
     // ── COUPONS ───────────────────────────────────────────────────────────
+    // Validate coupon (public route for guests) - MUST come FIRST before other coupon routes
+    p = matchPath('/restaurants/:restaurantId/coupons/validate', rawPath);
+    if (p && method === 'POST') {
+      console.log('[api] Coupon validation route matched:', { restaurantId: p.restaurantId, rawPath, method });
+      const { code, orderAmount } = body;
+      if (!code || orderAmount === undefined) {
+        return json(400, { message: 'Code and orderAmount required' });
+      }
+
+      const coupon = await getPrisma().coupon.findFirst({
+        where: {
+          restaurantId: p.restaurantId,
+          code: code,
+          isActive: true,
+        },
+      });
+
+      if (!coupon) {
+        return json(404, { message: 'Invalid coupon code' });
+      }
+
+      // Check if expired
+      if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+        return json(400, { message: 'Coupon has expired' });
+      }
+
+      // Check minimum order value
+      if (orderAmount < coupon.minOrderValue) {
+        return json(400, { 
+          message: `Minimum order value of ₹${coupon.minOrderValue} required`,
+          minOrderValue: coupon.minOrderValue,
+        });
+      }
+
+      // Check usage limit
+      if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+        return json(400, { message: 'Coupon usage limit reached' });
+      }
+
+      // Calculate discount
+      let discountAmount = 0;
+      if (coupon.discountType === 'percentage') {
+        discountAmount = orderAmount * (coupon.discountValue / 100);
+        if (coupon.maxDiscount) {
+          discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+        }
+      } else {
+        discountAmount = coupon.discountValue;
+      }
+
+      return json(200, {
+        valid: true,
+        coupon: {
+          id: coupon.id,
+          code: coupon.code,
+          description: coupon.description,
+          discountType: coupon.discountType,
+          discountValue: coupon.discountValue,
+          discountAmount: discountAmount,
+          minOrderValue: coupon.minOrderValue,
+          maxDiscount: coupon.maxDiscount,
+        },
+      });
+    }
+
     p = matchPath('/restaurants/:restaurantId/coupons', rawPath);
     if (p) {
       if (!token) return json(401, { message: 'Unauthorized' });
