@@ -11,7 +11,6 @@ const NAV = [
   { href: '/admin/menu',      label: 'Menu',       emoji: '🍽️' },
   { href: '/admin/tables',    label: 'Tables',     emoji: '🪑' },
   { href: '/admin/qrcodes',   label: 'QR Codes',   emoji: '📱' },
-  { href: '/admin/staff',     label: 'Staff',      emoji: '👥' },
   { href: '/admin/coupons',   label: 'Coupons',    emoji: '🎟️' },
   { href: '/admin/settings',  label: 'Settings',   emoji: '⚙️' },
 ];
