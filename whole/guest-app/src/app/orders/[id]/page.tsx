@@ -44,9 +44,6 @@ function OrderContent() {
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCelebration, setShowCelebration] = useState(isNew);
-  const [showReview, setShowReview] = useState(false);
-  const [review, setReview] = useState({ foodRating: 5, serviceRating: 5, comment: '' });
-  const [reviewDone, setReviewDone] = useState(false);
   const [lastStatus, setLastStatus] = useState<string | null>(null);
   const [lastPaymentStatus, setLastPaymentStatus] = useState<string | null>(null);
   const hasNotifiedRef = useRef(false);
@@ -128,11 +125,6 @@ function OrderContent() {
 
   useEffect(() => { if (showConfetti) { const t = setTimeout(() => setShowConfetti(false), 3500); return () => clearTimeout(t); } }, [showConfetti]);
   useEffect(() => { if (showCelebration) { const t = setTimeout(() => setShowCelebration(false), 3000); return () => clearTimeout(t); } }, [showCelebration]);
-
-  const submitReview = async () => {
-    if (!order) return;
-    try { await api.submitReview(order.restaurantId, order.id, { ...review, guestName: order.guestName }); setReviewDone(true); setShowReview(false); } catch {}
-  };
 
   if (loading) return (
     <div className="min-h-screen hero-bg flex items-center justify-center">
@@ -322,47 +314,6 @@ function OrderContent() {
             </span>
           </div>
         </div>
-
-        {/* Review */}
-        {isCompleted && !reviewDone && !order.review && (
-          <div className="card p-5 border-2 border-amber-200 bg-amber-50 shadow-sm shadow-amber-100">
-            {!showReview ? (
-              <div className="text-center">
-                <div className="text-4xl mb-3">⭐</div>
-                <h3 className="font-black text-stone-900 text-lg mb-1">How was your meal?</h3>
-                <p className="text-stone-400 text-sm mb-4">Your feedback means a lot to us</p>
-                <button onClick={() => setShowReview(true)} className="btn-primary px-8">Rate Your Experience</button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <h3 className="font-bold text-stone-900 text-center">Rate Your Experience</h3>
-                {[['foodRating', '🍽️ Food Quality'], ['serviceRating', '🙋 Service']].map(([key, label]) => (
-                  <div key={key}>
-                    <p className="text-stone-500 text-sm mb-2">{label}</p>
-                    <div className="flex gap-3">
-                      {[1,2,3,4,5].map((n) => (
-                        <button key={n} onClick={() => setReview((r) => ({ ...r, [key]: n }))}
-                          className={`text-3xl transition-all active:scale-90 ${n <= (review as any)[key] ? 'opacity-100' : 'opacity-20'}`}>⭐</button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <textarea value={review.comment} onChange={(e) => setReview((r) => ({ ...r, comment: e.target.value }))} placeholder="Any comments? (optional)" rows={2} className="input-field resize-none" />
-                <div className="flex gap-2">
-                  <button onClick={() => setShowReview(false)} className="btn-secondary flex-1">Cancel</button>
-                  <button onClick={submitReview} className="btn-primary flex-1">Submit</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {reviewDone && (
-          <div className="card p-5 text-center border-2 border-green-200 bg-green-50 bounce-in">
-            <div className="text-3xl mb-2">🙏</div>
-            <p className="text-green-700 font-bold">Thank you for your review!</p>
-          </div>
-        )}
 
         {/* Actions */}
         {!isPaidOrder && (
