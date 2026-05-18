@@ -13,8 +13,6 @@ const NAV = [
   { href: '/admin/qrcodes',   label: 'QR Codes',   emoji: '📱' },
   { href: '/admin/staff',     label: 'Staff',      emoji: '👥' },
   { href: '/admin/coupons',   label: 'Coupons',    emoji: '🎟️' },
-  { href: '/admin/reviews',   label: 'Reviews',    emoji: '⭐' },
-  { href: '/admin/reports',   label: 'Reports',    emoji: '📈' },
   { href: '/admin/settings',  label: 'Settings',   emoji: '⚙️' },
 ];
 

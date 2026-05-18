@@ -145,7 +145,7 @@ export default function DashboardPage() {
                   { href: '/admin/orders', label: 'Orders', icon: '📋', color: 'bg-orange-50 hover:bg-orange-100 text-orange-700' },
                   { href: '/admin/tables', label: 'Tables', icon: '🪑', color: 'bg-blue-50 hover:bg-blue-100 text-blue-700' },
                   { href: '/admin/menu', label: 'Menu', icon: '🍽️', color: 'bg-green-50 hover:bg-green-100 text-green-700' },
-                  { href: '/admin/reports', label: 'Reports', icon: '📈', color: 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
+                  { href: '/admin/coupons', label: 'Coupons', icon: '🎟️', color: 'bg-purple-50 hover:bg-purple-100 text-purple-700' },
                 ].map((a) => (
                   <Link key={a.href} href={a.href} className={`${a.color} rounded-xl p-3 flex flex-col items-center gap-1.5 transition-all`}>
                     <span className="text-xl">{a.icon}</span>

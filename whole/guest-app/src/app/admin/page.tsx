@@ -58,7 +58,6 @@ export default function LoginPage() {
         <div className="relative space-y-4">
           {[
             { icon: '⚡', text: 'Live order tracking & KDS' },
-            { icon: '📊', text: 'Revenue analytics & reports' },
             { icon: '🪑', text: 'Table & QR code management' },
           ].map((f) => (
             <div key={f.text} className="flex items-center gap-3 text-white/80">

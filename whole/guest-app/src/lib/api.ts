@@ -104,16 +104,6 @@ export const adminApi = {
     req(`/restaurants/${restaurantId}/coupons/${id}/toggle`, { method: 'PUT' }, token),
   deleteCoupon: (restaurantId: string, id: string, token: string) =>
     req(`/restaurants/${restaurantId}/coupons/${id}`, { method: 'DELETE' }, token),
-
-  // Reviews
-  getReviews: (restaurantId: string, token: string) =>
-    req(`/restaurants/${restaurantId}/reviews`, {}, token),
-  getReviewStats: (restaurantId: string, token: string) =>
-    req(`/restaurants/${restaurantId}/reviews/stats`, {}, token),
-
-  // Reports
-  getSalesReport: (restaurantId: string, token: string, startDate: string, endDate: string) =>
-    req(`/restaurants/${restaurantId}/reports/sales?startDate=${startDate}&endDate=${endDate}`, {}, token),
 };
 
 
@@ -158,8 +148,4 @@ export const api = {
   
   verifyRazorpayPayment: (data: any) =>
     req(`/payments/razorpay/verify`, { method: 'POST', body: JSON.stringify(data) }),
-  
-  // Reviews
-  submitReview: (restaurantId: string, orderId: string, data: any) =>
-    req(`/restaurants/${restaurantId}/reviews/orders/${orderId}`, { method: 'POST', body: JSON.stringify(data) }),
 };
