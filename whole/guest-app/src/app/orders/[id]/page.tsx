@@ -266,7 +266,7 @@ function OrderContent() {
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-stone-400 text-xs">×{item.quantity}</p>
-                <p className="text-orange-500 font-bold text-sm">₹{(item.price * item.quantity).toFixed(0)}</p>
+                <p className="text-orange-500 font-bold text-sm">₹{((item.price || 0) * (item.quantity || 1)).toFixed(0)}</p>
               </div>
             </div>
           ))}

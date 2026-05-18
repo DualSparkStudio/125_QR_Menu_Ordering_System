@@ -183,7 +183,7 @@ export default function CartPage() {
                   <span className={item.isVegetarian ? 'veg-dot' : 'non-veg-dot'} />
                   <span className="font-semibold text-stone-900 text-sm truncate">{item.name}</span>
                 </div>
-                <span className="text-orange-500 font-bold text-sm">{currency} {(item.basePrice * item.quantity).toFixed(0)}</span>
+                <span className="text-orange-500 font-bold text-sm">{currency} {((item.basePrice || 0) * (item.quantity || 1)).toFixed(0)}</span>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button onClick={() => handleQuantityChange(item.id, item.quantity - 1)} className="qty-btn bg-orange-50 text-orange-500 border border-orange-200 hover:bg-orange-100">−</button>
@@ -236,7 +236,7 @@ export default function CartPage() {
                     {order.items?.slice(0, 3).map((item: any) => (
                       <div key={item.id} className="flex items-center justify-between text-xs">
                         <span className="text-blue-700">×{item.quantity} {item.menuItem?.name}</span>
-                        <span className="text-blue-600 font-medium">{currency}{(item.price * item.quantity).toFixed(0)}</span>
+                        <span className="text-blue-600 font-medium">{currency}{((item.price || 0) * (item.quantity || 1)).toFixed(0)}</span>
                       </div>
                     ))}
                     {order.items?.length > 3 && (

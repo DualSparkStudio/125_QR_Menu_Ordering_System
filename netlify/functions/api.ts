@@ -1004,7 +1004,34 @@ export const handler: Handler = async (event) => {
         prisma.order.findMany({ where, include: { items: true }, orderBy: { createdAt: 'desc' } }),
         prisma.order.aggregate({ where, _sum: { totalAmount: true }, _count: true }),
       ]);
-      return json(200, { orders, totalRevenue: agg._sum.totalAmount || 0, totalOrders: agg._count });
+
+      const totalRevenue = agg._sum.totalAmount || 0;
+      const totalOrders = agg._count || 0;
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      // Compute top items
+      const itemMap: Record<string, { id: string; name: string; count: number; revenue: number }> = {};
+      for (const order of orders) {
+        for (const item of order.items) {
+          const key = item.menuItemId;
+          if (!itemMap[key]) itemMap[key] = { id: key, name: (item as any).menuItem?.name || key, count: 0, revenue: 0 };
+          itemMap[key].count += item.quantity;
+          itemMap[key].revenue += item.price * item.quantity;
+        }
+      }
+      const topItems = Object.values(itemMap).sort((a, b) => b.count - a.count);
+
+      // Compute daily revenue
+      const dailyMap: Record<string, { date: string; orders: number; revenue: number }> = {};
+      for (const order of orders) {
+        const date = new Date(order.createdAt).toISOString().split('T')[0];
+        if (!dailyMap[date]) dailyMap[date] = { date, orders: 0, revenue: 0 };
+        dailyMap[date].orders += 1;
+        dailyMap[date].revenue += order.totalAmount;
+      }
+      const daily = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+
+      return json(200, { orders, totalRevenue, totalOrders, avgOrderValue, topItems, daily });
     }
 
     // ── REVENUE ───────────────────────────────────────────────────────────
