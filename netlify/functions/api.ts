@@ -507,6 +507,7 @@ export const handler: Handler = async (event) => {
           include: {
             items: { include: { menuItem: true } },
             table: true,
+            restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true } },
           },
         });
 
@@ -623,6 +624,7 @@ export const handler: Handler = async (event) => {
         include: {
           items: { include: { menuItem: true } },
           table: true,
+          restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true } },
         },
       });
 
@@ -788,7 +790,11 @@ export const handler: Handler = async (event) => {
     if (p && method === 'GET') {
       const order = await getPrisma().order.findUnique({
         where: { id: p.id },
-        include: { items: { include: { menuItem: true } }, table: true },
+        include: { 
+          items: { include: { menuItem: true } }, 
+          table: true,
+          restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true } }
+        },
       });
       if (!order) return json(404, { message: 'Not found' });
       return json(200, order);
