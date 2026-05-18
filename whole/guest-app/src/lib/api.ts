@@ -11,6 +11,34 @@ async function req<T>(url: string, options?: RequestInit, token?: string): Promi
     },
     ...options,
   });
+
+  // Auto-refresh on 401 for admin requests
+  if (res.status === 401 && token) {
+    try {
+      // Dynamically import to avoid circular dependency
+      const { useAuthStore } = await import('@/store/authStore');
+      const newToken = await useAuthStore.getState().refresh();
+      if (newToken) {
+        // Retry with new token
+        const retryRes = await fetch(`${BASE}${url}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${newToken}`,
+            ...options?.headers,
+          },
+          ...options,
+        });
+        if (!retryRes.ok) {
+          const err = await retryRes.json().catch(() => ({}));
+          throw new Error(err.message || `Request failed: ${retryRes.status}`);
+        }
+        return retryRes.json();
+      }
+    } catch (refreshErr) {
+      // Refresh failed — fall through to throw original error
+    }
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `Request failed: ${res.status}`);
@@ -22,6 +50,8 @@ export const adminApi = {
   // Auth
   staffLogin: (email: string, password: string) =>
     req('/auth/staff/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  refreshToken: (refreshToken: string) =>
+    req('/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
 
   // Restaurant
   getRestaurant: (id: string, token: string) => req(`/restaurants/${id}`, {}, token),

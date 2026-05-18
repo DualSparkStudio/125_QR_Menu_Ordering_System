@@ -143,8 +143,8 @@ export const handler: Handler = async (event) => {
       if (!staff.isActive) return json(401, { message: 'Account inactive' });
 
       const payload = { sub: staff.id, email: staff.email, role: staff.role, restaurantId: staff.restaurantId };
-      const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
-      const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+      const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
+      const refreshToken = jwt.sign(payload, JWT_SECRET); // no expiry
 
       await getPrisma().staff.update({ where: { id: staff.id }, data: { lastLoginAt: new Date() } });
 
@@ -170,7 +170,7 @@ export const handler: Handler = async (event) => {
       if (!refreshToken) return json(400, { message: 'refreshToken required' });
       const payload: any = verifyToken(refreshToken);
       if (!payload) return json(401, { message: 'Invalid refresh token' });
-      const accessToken = jwt.sign({ sub: payload.sub, email: payload.email, role: payload.role, restaurantId: payload.restaurantId }, JWT_SECRET, { expiresIn: '24h' });
+      const accessToken = jwt.sign({ sub: payload.sub, email: payload.email, role: payload.role, restaurantId: payload.restaurantId }, JWT_SECRET, { expiresIn: '30d' });
       return json(200, { accessToken });
     }
 
