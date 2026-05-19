@@ -4,13 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-<<<<<<< HEAD
 import Footer from '@/components/Footer';
-=======
 import { useOrderNotifications } from '../../../../shared/useOrderNotifications';
 import { NotificationBell } from '../../../../shared/NotificationBell';
 import { NotificationToast } from '../../../../shared/NotificationToast';
->>>>>>> b0b6ac83284d904d321e35cab6c93ce7105ebd0b
 
 const NAV = [
   { href: '/admin/dashboard', label: 'Dashboard',  emoji: '📊' },
