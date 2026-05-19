@@ -1,5 +1,5 @@
 [build]
-  command = "cd netlify/functions && npm install && npx prisma generate && cd ../../whole/shared && npm install && cd ../guest-app && npm install && npx prisma generate && npm run build"
+  command = "cd netlify/functions && npm install && npx prisma generate --schema=./prisma/schema.prisma && cd ../../whole/shared && npm install && cd ../guest-app && npm install && npx prisma generate --schema=./prisma/schema.prisma && npm run build"
   publish = "whole/guest-app/.next"
 
 [functions]
