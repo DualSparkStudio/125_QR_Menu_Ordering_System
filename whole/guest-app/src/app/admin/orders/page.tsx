@@ -118,13 +118,14 @@ export default function OrdersPage() {
       alert('Unable to load restaurant details. Please refresh.');
       return;
     }
-    const { image, label } = staff?.restaurantId
+    const { image, label, gstin } = staff?.restaurantId
       ? getBillImageFromStorage(staff.restaurantId)
-      : { image: null, label: 'Scan to Pay' };
+      : { image: null, label: 'Scan to Pay', gstin: null };
     openThermalBill({
       order,
       billImage: image,
       billImageLabel: label,
+      gstin: gstin,
       logoUrl: order.restaurant?.logo || null,
       autoPrint: false,
     });

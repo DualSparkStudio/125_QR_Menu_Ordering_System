@@ -1,5 +1,5 @@
 /**
- * 80mm thermal POS receipt — HTML generator for print / PDF preview
+ * 80mm thermal POS receipt — professional restaurant bill generator
  */
 
 export interface ThermalBillConfig {
@@ -8,9 +8,10 @@ export interface ThermalBillConfig {
   billImageLabel?: string;
   logoUrl?: string | null;
   autoPrint?: boolean;
+  gstin?: string | null;
 }
 
-function escapeHtml(str: string): string {
+function esc(str: string): string {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -19,467 +20,335 @@ function escapeHtml(str: string): string {
 }
 
 function fmt(n: number): string {
-  return `₹${(n || 0).toFixed(2)}`;
+  return `&#8377;${(n || 0).toFixed(2)}`;
 }
 
-function buildItemsHtml(items: any[]): string {
-  if (!items?.length) return '<p class="empty-items">No items</p>';
-  return items
-    .map((item) => {
-      const name = escapeHtml(item.menuItem?.name || 'Item');
-      const qty = item.quantity || 1;
-      const unit = item.price || 0;
-      const lineTotal = unit * qty;
-      return `
-        <div class="item-row">
-          <div class="item-top">
-            <span class="item-name">${name}</span>
-            <span class="item-amt">${fmt(lineTotal)}</span>
-          </div>
-          <div class="item-sub">×${qty} @ ${fmt(unit)}</div>
-        </div>`;
-    })
-    .join('');
+/** Pad left so value aligns to a fixed total width */
+function padL(str: string, width: number): string {
+  return str.padStart(width);
 }
 
-function buildSummaryRows(order: any, r: any): string {
+/** Truncate + pad right for item name column */
+function padR(str: string, width: number): string {
+  const s = String(str).substring(0, width);
+  return s.padEnd(width);
+}
+
+function buildItemRows(items: any[]): string {
+  if (!items?.length) return `<tr><td colspan="4" style="text-align:center;padding:6px 0;font-size:10px;">No items</td></tr>`;
+  return items.map((item) => {
+    const name = esc(item.menuItem?.name || 'Item');
+    const qty = item.quantity || 1;
+    const unit = (item.price || 0).toFixed(2);
+    const total = ((item.price || 0) * qty).toFixed(2);
+    return `
+      <tr>
+        <td class="col-name">${name}</td>
+        <td class="col-qty">${qty}</td>
+        <td class="col-price">${unit}</td>
+        <td class="col-total">${total}</td>
+      </tr>`;
+  }).join('');
+}
+
+function buildSummary(order: any, r: any): string {
   const sub = order.subtotal || 0;
+  const discount = order.discountAmount || 0;
+  const taxable = sub - discount;
+  const svc = order.serviceCharge || 0;
   const cgstPct = r.cgstPercentage || 0;
   const sgstPct = r.sgstPercentage || 0;
-  const cgstAmt = (order.cgstAmount || 0) > 0 ? order.cgstAmount : (sub * cgstPct) / 100;
-  const sgstAmt = (order.sgstAmount || 0) > 0 ? order.sgstAmount : (sub * sgstPct) / 100;
-  const rows: string[] = [];
+  const cgst = (order.cgstAmount || 0) > 0 ? order.cgstAmount : (taxable * cgstPct) / 100;
+  const sgst = (order.sgstAmount || 0) > 0 ? order.sgstAmount : (taxable * sgstPct) / 100;
+  const grand = order.totalAmount || 0;
 
-  rows.push(`<div class="sum-row"><span>Subtotal</span><span>${fmt(sub)}</span></div>`);
+  const row = (label: string, value: string, cls = '') =>
+    `<div class="sum-row ${cls}"><span>${label}</span><span>${value}</span></div>`;
 
-  if ((order.taxAmount || 0) > 0) {
-    rows.push(`<div class="sum-row"><span>Tax (${r.taxPercentage || 0}%)</span><span>${fmt(order.taxAmount)}</span></div>`);
-  }
-  if ((order.serviceCharge || 0) > 0) {
-    rows.push(`<div class="sum-row"><span>Service (${r.serviceChargePercentage || 0}%)</span><span>${fmt(order.serviceCharge)}</span></div>`);
-  }
-  if (cgstAmt > 0 || cgstPct > 0) {
-    rows.push(`<div class="sum-row"><span>CGST (${cgstPct}%)</span><span>${fmt(cgstAmt)}</span></div>`);
-  }
-  if (sgstAmt > 0 || sgstPct > 0) {
-    rows.push(`<div class="sum-row"><span>SGST (${sgstPct}%)</span><span>${fmt(sgstAmt)}</span></div>`);
-  }
-  if ((order.discountAmount || 0) > 0) {
-    rows.push(`<div class="sum-row discount"><span>Discount</span><span>−${fmt(order.discountAmount)}</span></div>`);
-  }
+  const dash = `<div class="dash-line"></div>`;
 
-  return rows.join('');
+  let html = '';
+  html += row('Subtotal', fmt(sub));
+  if (discount > 0) html += row(`Discount${order.couponCode ? ` (${esc(order.couponCode)})` : ''}`, `&minus;${fmt(discount)}`, 'discount');
+  html += dash;
+  html += row('Taxable Amount', fmt(taxable), 'taxable');
+  if (svc > 0) html += row(`Service (${r.serviceChargePercentage || 0}%)`, fmt(svc));
+  if (cgst > 0 || cgstPct > 0) html += row(`CGST (${cgstPct}%)`, fmt(cgst));
+  if (sgst > 0 || sgstPct > 0) html += row(`SGST (${sgstPct}%)`, fmt(sgst));
+  html += dash;
+  html += `<div class="grand-row"><span>GRAND TOTAL</span><span>${fmt(grand)}</span></div>`;
+  html += dash;
+
+  return html;
 }
 
 export function buildThermalBillDocument(config: ThermalBillConfig): string {
   const { order, billImage, billImageLabel = 'Scan to Pay', logoUrl, autoPrint = true } = config;
   const r = order.restaurant || {};
-  const orderShort = escapeHtml(order.orderNumber?.slice(-8) || '—');
+  const orderShort = esc(order.orderNumber?.slice(-8) || '—');
   const created = new Date(order.createdAt).toLocaleString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   });
+  const isPaid = order.paymentStatus === 'completed';
 
   const logoBlock = logoUrl
-    ? `<div class="logo-wrap"><img src="${escapeHtml(logoUrl)}" alt="" class="logo-img" /></div>`
-    : `<div class="logo-placeholder" aria-hidden="true">◆</div>`;
-
-  const qrBlock = billImage
-    ? `
-    <div class="qr-section">
-      <p class="qr-label">${escapeHtml(billImageLabel)}</p>
-      <div class="qr-box">
-        <img src="${billImage.replace(/"/g, '&quot;')}" alt="Payment QR" class="qr-img" />
-      </div>
-      <p class="qr-hint">Scan with any UPI app</p>
-    </div>`
+    ? `<div class="logo-wrap"><img src="${esc(logoUrl)}" alt="" class="logo-img" /></div>`
     : '';
+
+  const qrBlock = billImage ? `
+    <div class="qr-section">
+      <div class="dash-sep"></div>
+      <p class="qr-label">&#9654; ${esc(billImageLabel)}</p>
+      <div class="qr-box">
+        <img src="${billImage.replace(/"/g, '&quot;')}" alt="QR" class="qr-img" />
+      </div>
+      <p class="qr-hint">Scan with any UPI app to pay</p>
+    </div>` : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bill ${orderShort}</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Bill #${orderShort}</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 
-    html {
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    body{
+      font-family:'Courier New',Courier,'Liberation Mono',monospace;
+      background:#c8c8c8;
+      color:#000;
+      font-size:11px;
+      line-height:1.4;
     }
 
-    body {
-      font-family: 'Courier New', Courier, 'Liberation Mono', monospace;
-      background: #d1d5db;
-      color: #000;
-      line-height: 1.35;
+    /* ── Toolbar ── */
+    .toolbar{
+      position:sticky;top:0;z-index:100;
+      display:flex;flex-wrap:wrap;gap:8px;
+      justify-content:center;align-items:center;
+      padding:10px 16px;
+      background:#111827;
+    }
+    .toolbar button{
+      font-family:system-ui,sans-serif;font-size:13px;font-weight:600;
+      padding:7px 18px;border:none;border-radius:6px;cursor:pointer;
+    }
+    .btn-print{background:#f97316;color:#fff}
+    .btn-pdf{background:#e5e7eb;color:#111}
+    .btn-close{background:#374151;color:#fff}
+
+    /* ── Preview wrapper ── */
+    .preview{
+      display:flex;justify-content:center;
+      padding:20px 12px 48px;
     }
 
-    .toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      align-items: center;
-      padding: 12px 16px;
-      background: #1f2937;
-      border-bottom: 1px solid #374151;
+    /* ── Receipt ── */
+    .receipt{
+      width:80mm;max-width:80mm;min-width:80mm;
+      background:#fff;
+      padding:4mm 3.5mm 5mm;
+      box-shadow:0 6px 32px rgba(0,0,0,.22);
     }
 
-    .toolbar button {
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: opacity 0.15s;
+    /* Header */
+    .logo-wrap{text-align:center;margin-bottom:3px}
+    .logo-img{max-width:20mm;max-height:12mm;object-fit:contain}
+
+    .store-name{
+      text-align:center;
+      font-size:14px;font-weight:700;
+      letter-spacing:.14em;text-transform:uppercase;
+      margin-bottom:2px;
+    }
+    .store-tagline{
+      text-align:center;font-size:9px;
+      letter-spacing:.06em;color:#444;
+      margin-bottom:3px;
+    }
+    .store-meta{
+      text-align:center;font-size:9.5px;
+      color:#333;line-height:1.5;
     }
 
-    .toolbar button:hover { opacity: 0.9; }
-    .btn-print { background: #f97316; color: #fff; }
-    .btn-pdf { background: #fff; color: #1f2937; }
-    .btn-close { background: #4b5563; color: #fff; }
-
-    .preview-wrap {
-      display: flex;
-      justify-content: center;
-      padding: 24px 12px 48px;
-      min-height: calc(100vh - 56px);
+    /* Separators */
+    .dash-sep{
+      border:none;border-top:1px dashed #000;
+      margin:5px 0;
+    }
+    .solid-sep{
+      border:none;border-top:2px solid #000;
+      margin:5px 0;
+    }
+    .dash-line{
+      border-top:1px dashed #000;
+      margin:4px 0;
     }
 
-    /* ── Receipt: exactly 80mm ── */
-    .receipt {
-      width: 80mm;
-      max-width: 80mm;
-      min-width: 80mm;
-      background: #fff;
-      padding: 3.5mm 3mm 4mm;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    /* Order info */
+    .order-block{text-align:center;padding:3px 0}
+    .order-id{font-size:12px;font-weight:700;letter-spacing:.06em}
+    .order-sub{font-size:10px;margin-top:2px;color:#222}
+    .order-time{font-size:9.5px;color:#555;margin-top:1px}
+
+    /* Items table */
+    .items-table{
+      width:100%;border-collapse:collapse;
+      margin:4px 0;
+    }
+    .items-table thead tr{
+      border-bottom:1px dashed #000;
+    }
+    .items-table thead th{
+      font-size:9px;font-weight:700;
+      text-transform:uppercase;letter-spacing:.07em;
+      padding:2px 0;color:#333;
+    }
+    .col-name{text-align:left;width:46%}
+    .col-qty{text-align:center;width:10%}
+    .col-price{text-align:right;width:22%}
+    .col-total{text-align:right;width:22%}
+
+    .items-table tbody tr{border-bottom:1px dotted #ccc}
+    .items-table tbody tr:last-child{border-bottom:none}
+    .items-table tbody td{
+      font-size:10.5px;padding:4px 0;vertical-align:top;
+    }
+    .items-table tbody td.col-name{font-weight:600;word-break:break-word}
+
+    /* Summary */
+    .summary{margin-top:2px}
+    .sum-row{
+      display:flex;justify-content:space-between;
+      font-size:10.5px;padding:2px 0;
+    }
+    .sum-row.discount span{color:#000;font-weight:700}
+    .sum-row.taxable{font-weight:700;font-size:11px}
+
+    .grand-row{
+      display:flex;justify-content:space-between;align-items:baseline;
+      font-size:14px;font-weight:700;
+      letter-spacing:.06em;
+      padding:4px 0;
     }
 
-    .logo-wrap, .logo-placeholder {
-      text-align: center;
-      margin-bottom: 4px;
+    /* Footer */
+    .footer{
+      text-align:center;font-size:9.5px;
+      line-height:1.6;padding:3px 0;
+    }
+    .powered{
+      text-align:center;font-size:8px;
+      color:#888;margin-top:6px;letter-spacing:.12em;
     }
 
-    .logo-img {
-      max-width: 22mm;
-      max-height: 14mm;
-      object-fit: contain;
+    /* QR */
+    .qr-section{text-align:center;margin-top:4px}
+    .qr-label{
+      font-size:10px;font-weight:700;
+      letter-spacing:.06em;text-transform:uppercase;
+      margin-bottom:5px;
     }
-
-    .logo-placeholder {
-      font-size: 18px;
-      color: #9ca3af;
-      letter-spacing: 2px;
+    .qr-box{
+      display:inline-block;
+      padding:3mm;
+      border:1px dashed #000;
+      background:#fafafa;
     }
-
-    .store-name {
-      text-align: center;
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-bottom: 2px;
+    .qr-img{
+      display:block;width:52mm;max-width:100%;
+      height:auto;object-fit:contain;margin:0 auto;
     }
+    .qr-hint{font-size:8.5px;color:#555;margin-top:4px}
 
-    .store-meta {
-      text-align: center;
-      font-size: 9.5px;
-      color: #333;
-      line-height: 1.45;
-    }
-
-    .rule {
-      border: none;
-      border-top: 1px dashed #000;
-      margin: 5px 0;
-    }
-
-    .rule-solid {
-      border: none;
-      border-top: 2px solid #000;
-      margin: 6px 0 4px;
-    }
-
-    .order-block {
-      text-align: center;
-      padding: 2px 0;
-    }
-
-    .order-id {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-
-    .order-table {
-      font-size: 10px;
-      margin-top: 2px;
-    }
-
-    .order-time {
-      font-size: 9.5px;
-      color: #444;
-      margin-top: 2px;
-    }
-
-    .items-head {
-      display: flex;
-      justify-content: space-between;
-      font-size: 9px;
-      font-weight: 700;
-      color: #555;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 4px;
-      padding-bottom: 2px;
-      border-bottom: 1px dotted #999;
-    }
-
-    .item-row {
-      padding: 5px 0;
-      border-bottom: 1px dotted #ddd;
-    }
-
-    .item-row:last-child { border-bottom: none; }
-
-    .item-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 4px;
-    }
-
-    .item-name {
-      font-size: 11px;
-      font-weight: 700;
-      flex: 1;
-      word-break: break-word;
-    }
-
-    .item-amt {
-      font-size: 11px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-
-    .item-sub {
-      font-size: 9.5px;
-      color: #555;
-      margin-top: 2px;
-    }
-
-    .empty-items {
-      font-size: 10px;
-      text-align: center;
-      padding: 8px 0;
-    }
-
-    .summary {
-      margin-top: 4px;
-    }
-
-    .sum-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10.5px;
-      padding: 2px 0;
-    }
-
-    .sum-row.discount span:last-child { font-weight: 700; }
-
-    .total-block {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 2px solid #000;
-    }
-
-    .total-label {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-    }
-
-    .total-amt {
-      font-size: 16px;
-      font-weight: 700;
-    }
-
-    .footer-msg {
-      text-align: center;
-      font-size: 9.5px;
-      line-height: 1.5;
-      padding: 4px 0;
-    }
-
-    .footer-msg p { margin: 2px 0; }
-
-    .qr-section {
-      margin-top: 8px;
-      text-align: center;
-    }
-
-    .qr-label {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-    }
-
-    .qr-box {
-      display: inline-block;
-      padding: 4mm;
-      border: 2px dashed #000;
-      background: #fafafa;
-      max-width: 100%;
-    }
-
-    .qr-img {
-      display: block;
-      width: 68mm;
-      max-width: 100%;
-      height: auto;
-      max-height: 78mm;
-      object-fit: contain;
-      margin: 0 auto;
-    }
-
-    .qr-hint {
-      font-size: 8.5px;
-      color: #555;
-      margin-top: 5px;
-    }
-
-    .receipt-end {
-      text-align: center;
-      font-size: 8px;
-      color: #888;
-      margin-top: 8px;
-      letter-spacing: 0.2em;
-    }
-
-    @media print {
-      @page {
-        size: 80mm auto;
-        margin: 0;
-      }
-
-      html, body {
-        width: 80mm;
-        margin: 0;
-        padding: 0;
-        background: #fff !important;
-      }
-
-      .no-print {
-        display: none !important;
-      }
-
-      .preview-wrap {
-        padding: 0;
-        min-height: 0;
-        display: block;
-      }
-
-      .receipt {
-        width: 80mm;
-        max-width: 80mm;
-        min-width: 80mm;
-        margin: 0;
-        padding: 2mm 2.5mm 3mm;
-        box-shadow: none;
-      }
-
-      .qr-box {
-        border-color: #000;
-        background: #fff;
+    @media print{
+      @page{size:80mm auto;margin:0}
+      html,body{width:80mm;margin:0;padding:0;background:#fff!important}
+      .no-print{display:none!important}
+      .preview{padding:0;display:block}
+      .receipt{
+        width:80mm;max-width:80mm;min-width:80mm;
+        margin:0;padding:2mm 2.5mm 3mm;
+        box-shadow:none;
       }
     }
   </style>
 </head>
 <body>
   <div class="toolbar no-print">
-    <button type="button" class="btn-print" onclick="doPrint()">🖨️ Print Bill</button>
-    <button type="button" class="btn-pdf" onclick="doPdf()">📄 Save as PDF</button>
-    <button type="button" class="btn-close" onclick="window.close()">✕ Close</button>
+    <button class="btn-print" onclick="window.print()">&#128438; Print Bill</button>
+    <button class="btn-pdf" onclick="window.print()">&#128196; Save PDF</button>
+    <button class="btn-close" onclick="window.close()">&#10005; Close</button>
   </div>
 
-  <div class="preview-wrap">
-    <article class="receipt" id="receipt">
+  <div class="preview">
+    <article class="receipt">
+
       ${logoBlock}
-      <h1 class="store-name">${escapeHtml(r.name || 'Restaurant')}</h1>
+      <h1 class="store-name">${esc(r.name || 'Restaurant')}</h1>
+      ${r.description ? `<p class="store-tagline">${esc(r.description)}</p>` : ''}
       <div class="store-meta">
-        ${r.address ? `<div>${escapeHtml(r.address)}</div>` : ''}
-        ${r.phone ? `<div>Tel: ${escapeHtml(r.phone)}</div>` : ''}
+        ${r.address ? `<div>${esc(r.address)}</div>` : ''}
+        ${r.phone ? `<div>Tel: ${esc(r.phone)}</div>` : ''}
+        ${r.email ? `<div>Email: ${esc(r.email)}</div>` : ''}
+        ${config.gstin ? `<div>GSTIN: ${esc(config.gstin)}</div>` : ''}
       </div>
 
-      <hr class="rule" />
+      <div class="dash-sep"></div>
 
       <div class="order-block">
-        <div class="order-id">ORDER #${orderShort}</div>
-        <div class="order-table">Table ${escapeHtml(order.table?.tableNumber || '—')} · ${escapeHtml(order.table?.section || 'Main')}</div>
-        <div class="order-time">${escapeHtml(created)}</div>
+        <div class="order-id">BILL #${orderShort}</div>
+        <div class="order-sub">Table ${esc(order.table?.tableNumber || '—')} &nbsp;|&nbsp; ${esc(order.table?.section || 'Main')}</div>
+        <div class="order-time">${esc(created)}</div>
       </div>
 
-      <hr class="rule" />
+      <div class="dash-sep"></div>
 
-      <div class="items-head"><span>Item</span><span>Amt</span></div>
-      ${buildItemsHtml(order.items)}
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th class="col-name">Item</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-price">Price</th>
+            <th class="col-total">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${buildItemRows(order.items)}
+        </tbody>
+      </table>
 
-      <hr class="rule" />
+      <div class="dash-sep"></div>
 
       <div class="summary">
-        ${buildSummaryRows(order, r)}
-        <div class="total-block">
-          <span class="total-label">TOTAL</span>
-          <span class="total-amt">${fmt(order.totalAmount)}</span>
-        </div>
+        ${buildSummary(order, r)}
       </div>
 
-      <hr class="rule" />
+      <div class="dash-sep"></div>
 
-      <div class="footer-msg">
+      <div class="footer">
         <p>Thank you for dining with us!</p>
-        <p>Please visit again</p>
+        <p>Please visit again &#9829;</p>
       </div>
 
       ${qrBlock}
 
-      <div class="receipt-end">— · —</div>
+      <div className="dash-sep"></div>
+      <p className="powered">Designed &amp; Developed by <a href="https://dualsparkstudio.com/" target="_blank" style="color:inherit;text-decoration:none;">DualSpark Studio</a></p>
+
     </article>
   </div>
 
-  <script>
-    function doPrint() {
-      window.print();
-    }
-    function doPdf() {
-      window.print();
-    }
-    ${autoPrint ? `window.addEventListener('load', function() {
-      setTimeout(function() { window.print(); }, 350);
-    });` : ''}
-  </script>
+  ${autoPrint ? `<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400);});<\/script>` : ''}
 </body>
 </html>`;
 }
 
 export function openThermalBill(config: ThermalBillConfig): Window | null {
-  const win = window.open('', '_blank', 'width=420,height=720,scrollbars=yes');
+  const win = window.open('', '_blank', 'width=440,height=760,scrollbars=yes');
   if (!win) {
     alert('Please allow pop-ups to print the bill.');
     return null;
@@ -490,11 +359,10 @@ export function openThermalBill(config: ThermalBillConfig): Window | null {
 }
 
 export function getBillImageFromStorage(restaurantId: string) {
-  if (typeof window === 'undefined' || !restaurantId) return { image: null as string | null, label: 'Scan to Pay' };
+  if (typeof window === 'undefined' || !restaurantId) return { image: null as string | null, label: 'Scan to Pay', gstin: null as string | null };
   return {
     image: localStorage.getItem(`billImage_${restaurantId}`),
     label: localStorage.getItem(`billImageLabel_${restaurantId}`) || 'Scan to Pay',
+    gstin: localStorage.getItem(`gstin_${restaurantId}`),
   };
 }
-
-

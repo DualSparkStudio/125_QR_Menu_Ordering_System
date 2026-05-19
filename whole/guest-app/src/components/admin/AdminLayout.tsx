@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+import Footer from '@/components/Footer';
 
 const NAV = [
   { href: '/admin/dashboard', label: 'Dashboard',  emoji: '📊' },
@@ -129,8 +130,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto min-w-0 pt-16 lg:pt-0">
-        {children}
+      <main className="flex-1 overflow-y-auto min-w-0 pt-16 lg:pt-0 flex flex-col">
+        <div className="flex-1">
+          {children}
+        </div>
+        <Footer />
       </main>
     </div>
   );

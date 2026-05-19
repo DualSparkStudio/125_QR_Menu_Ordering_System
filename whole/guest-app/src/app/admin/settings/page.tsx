@@ -19,9 +19,11 @@ export default function SettingsPage() {
   const [billImageError, setBillImageError] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [gstin, setGstin] = useState('');
 
   const billImageKey = staff?.restaurantId ? `billImage_${staff.restaurantId}` : null;
   const billImageLabelKey = staff?.restaurantId ? `billImageLabel_${staff.restaurantId}` : null;
+  const gstinKey = staff?.restaurantId ? `gstin_${staff.restaurantId}` : null;
 
   useEffect(() => {
     if (!staff?.restaurantId || !token) return;
@@ -33,7 +35,6 @@ export default function SettingsPage() {
         phone: data.phone,
         email: data.email,
         address: data.address,
-        taxPercentage: data.taxPercentage,
         serviceChargePercentage: data.serviceChargePercentage,
         cgstPercentage: data.cgstPercentage ?? 0,
         sgstPercentage: data.sgstPercentage ?? 0,
@@ -42,6 +43,7 @@ export default function SettingsPage() {
     });
     setBillImage(localStorage.getItem(`billImage_${staff.restaurantId}`));
     setBillImageLabel(localStorage.getItem(`billImageLabel_${staff.restaurantId}`) || 'Scan to Pay');
+    setGstin(localStorage.getItem(`gstin_${staff.restaurantId}`) || '');
   }, [staff, token]);
 
   const handleBillImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +78,7 @@ export default function SettingsPage() {
       localStorage.removeItem(billImageKey);
     }
     localStorage.setItem(billImageLabelKey, billImageLabel.trim() || 'Scan to Pay');
+    if (gstinKey) localStorage.setItem(gstinKey, gstin);
   };
 
   const save = async () => {
@@ -126,6 +129,9 @@ export default function SettingsPage() {
             <F label="Address">
               <input value={form.address || ''} onChange={(e) => setForm((f: any) => ({ ...f, address: e.target.value }))} className="input" />
             </F>
+            <F label="GSTIN">
+              <input value={gstin} onChange={(e) => setGstin(e.target.value)} className="input" placeholder="e.g. 22AAAAA0000A1Z5" />
+            </F>
             <F label="Description">
               <textarea value={form.description || ''} onChange={(e) => setForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="input resize-none" />
             </F>
@@ -135,9 +141,6 @@ export default function SettingsPage() {
         <div className="card p-5">
           <h2 className="font-bold text-gray-700 text-sm mb-4 uppercase tracking-wider">Pricing & Taxes</h2>
           <div className="grid grid-cols-2 gap-3">
-            <F label="Tax (%)">
-              <input value={form.taxPercentage ?? 0} onChange={(e) => setForm((f: any) => ({ ...f, taxPercentage: parseFloat(e.target.value) || 0 }))} type="number" min="0" max="100" step="0.5" className="input" />
-            </F>
             <F label="Service Charge (%)">
               <input value={form.serviceChargePercentage ?? 0} onChange={(e) => setForm((f: any) => ({ ...f, serviceChargePercentage: parseFloat(e.target.value) || 0 }))} type="number" min="0" max="100" step="0.5" className="input" />
             </F>

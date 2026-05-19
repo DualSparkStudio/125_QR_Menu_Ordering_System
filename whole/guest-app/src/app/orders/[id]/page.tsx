@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { initializeNotifications, showNotification } from '../../../../../shared/notificationUtils';
+import Footer from '@/components/Footer';
 
 const STEPS = [
   { key: 'pending',   label: 'Order Placed',  icon: '📋', desc: 'We received your order' },
@@ -279,12 +280,6 @@ function OrderContent() {
           
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">₹{(order.subtotal || 0).toFixed(2)}</span></div>
-            {(order.taxAmount || 0) > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-stone-500">Tax ({order.restaurant?.taxPercentage || 0}%)</span>
-                <span className="text-stone-900 font-medium">₹{(order.taxAmount || 0).toFixed(2)}</span>
-              </div>
-            )}
             {(order.serviceCharge || 0) > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-stone-500">Service Charge ({order.restaurant?.serviceChargePercentage || 0}%)</span>
@@ -348,6 +343,7 @@ function OrderContent() {
             <p className="text-green-600 text-xs mt-1">Thank you for dining with us!</p>
           </div>
         )}
+        <Footer />
       </div>
     </div>
   );

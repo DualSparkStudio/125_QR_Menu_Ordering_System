@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import Link from 'next/link';
 import { showNotification } from '../../../../shared/notificationUtils';
 import { calculateOrderTotals } from '../../../../shared/orderUtils';
+import Footer from '@/components/Footer';
 
 declare global { interface Window { Razorpay: any; } }
 
@@ -309,12 +310,6 @@ export default function CartPage() {
           <h3 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-4">Bill Summary</h3>
           <div className="space-y-2.5">
             <div className="flex justify-between text-sm"><span className="text-stone-500">Subtotal</span><span className="text-stone-900 font-medium">{currency}{subtotal.toFixed(2)}</span></div>
-            {tax > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-stone-500">Tax ({restaurant?.taxPercentage || 0}%)</span>
-                <span className="text-stone-900 font-medium">{currency}{tax.toFixed(2)}</span>
-              </div>
-            )}
             {serviceCharge > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-stone-500">Service Charge ({restaurant?.serviceChargePercentage || 0}%)</span>
@@ -365,6 +360,7 @@ export default function CartPage() {
         </div>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4 text-sm flex items-start gap-2"><span>⚠️</span><span>{error}</span></div>}
+        <Footer />
       </div>
 
       {/* Place order */}
