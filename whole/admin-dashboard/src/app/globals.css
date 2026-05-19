@@ -87,3 +87,39 @@ body {
 /* Modal */
 .modal-overlay { @apply fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4; }
 .modal { @apply bg-white rounded-2xl shadow-2xl w-full; }
+
+/* ── Notification System ── */
+
+/* Toast slide-in from right */
+@keyframes notification-toast-in {
+  0% { opacity: 0; transform: translateX(100%) scale(0.95); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes notification-toast-out {
+  0% { opacity: 1; transform: translateX(0) scale(1); max-height: 200px; }
+  100% { opacity: 0; transform: translateX(120%) scale(0.9); max-height: 0; }
+}
+.notification-toast-enter {
+  animation: notification-toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.notification-toast-exit {
+  animation: notification-toast-out 0.35s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+/* Badge pulse */
+@keyframes notification-badge-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+.notification-badge-pulse {
+  animation: notification-badge-glow 2s ease-in-out infinite;
+}
+
+/* Dropdown entrance */
+@keyframes notification-dropdown-in {
+  0% { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.notification-dropdown-enter {
+  animation: notification-dropdown-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

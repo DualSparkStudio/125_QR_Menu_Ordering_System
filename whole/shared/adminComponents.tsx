@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useOrderNotifications } from './useOrderNotifications';
+import { NotificationBell } from './NotificationBell';
+import { NotificationToast } from './NotificationToast';
 
 type AuthHook = () => {
-  staff: { role?: string; name?: string; email?: string } | null;
+  staff: { role?: string; name?: string; email?: string; restaurantId?: string } | null;
   logout: () => void;
   isAuthenticated: boolean;
   isHydrated: boolean;
@@ -35,6 +38,16 @@ export function createAdminLayout(useAuthStore: AuthHook) {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+    // ── Order Notification System ──
+    useOrderNotifications({
+      restaurantId: (staff as any)?.restaurantId,
+      enabled: isAuthenticated && !!(staff as any)?.restaurantId,
+    });
+
+    const navigateToOrders = () => {
+      router.push('/orders');
+    };
+
     useEffect(() => {
       if (isHydrated && !isAuthenticated) {
         router.replace('/');
@@ -60,15 +73,21 @@ export function createAdminLayout(useAuthStore: AuthHook) {
               <p className="text-gray-400 text-xs capitalize">{staff?.role}</p>
             </div>
           </div>
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded-lg">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Mobile Notification Bell */}
+            <div className="[&_svg]:!text-gray-500 [&_button]:hover:!bg-gray-100">
+              <NotificationBell onViewOrders={navigateToOrders} />
+            </div>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded-lg">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu Overlay */}
@@ -81,10 +100,14 @@ export function createAdminLayout(useAuthStore: AuthHook) {
           <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/5 ${collapsed ? 'justify-center' : ''}`}>
             <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center text-base flex-shrink-0">🍽️</div>
             {!collapsed && (
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-white font-bold text-sm leading-tight truncate">ForkAdmin</p>
                 <p className="text-white/30 text-xs capitalize truncate">{staff?.role}</p>
               </div>
+            )}
+            {/* Desktop Notification Bell */}
+            {!collapsed && (
+              <NotificationBell onViewOrders={navigateToOrders} />
             )}
           </div>
 
@@ -128,6 +151,9 @@ export function createAdminLayout(useAuthStore: AuthHook) {
           </div>
         </aside>
         <main className="flex-1 overflow-y-auto min-w-0 pt-16 lg:pt-0">{children}</main>
+
+        {/* Notification Toasts — render at layout level for all pages */}
+        <NotificationToast onViewOrders={navigateToOrders} />
       </div>
     );
   };

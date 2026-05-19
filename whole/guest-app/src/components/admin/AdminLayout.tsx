@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+<<<<<<< HEAD
 import Footer from '@/components/Footer';
+=======
+import { useOrderNotifications } from '../../../../shared/useOrderNotifications';
+import { NotificationBell } from '../../../../shared/NotificationBell';
+import { NotificationToast } from '../../../../shared/NotificationToast';
+>>>>>>> b0b6ac83284d904d321e35cab6c93ce7105ebd0b
 
 const NAV = [
   { href: '/admin/dashboard', label: 'Dashboard',  emoji: '📊' },
@@ -23,6 +29,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // ── Order Notification System ──
+  useOrderNotifications({
+    restaurantId: staff?.restaurantId,
+    enabled: isAuthenticated && !!staff?.restaurantId,
+  });
+
+  const navigateToOrders = () => {
+    router.push('/admin/orders');
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -55,15 +71,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <p className="text-gray-400 text-xs capitalize">{staff?.role}</p>
           </div>
         </div>
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded-lg">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {mobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Mobile Notification Bell */}
+          <div className="[&_svg]:!text-gray-500 [&_button]:hover:!bg-gray-100">
+            <NotificationBell onViewOrders={navigateToOrders} />
+          </div>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 rounded-lg">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
@@ -77,10 +99,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/5 ${collapsed ? 'justify-center' : ''}`}>
           <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-500 rounded-lg flex items-center justify-center text-base flex-shrink-0">🍽️</div>
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-white font-bold text-sm leading-tight truncate">ForkAdmin</p>
               <p className="text-white/30 text-xs capitalize truncate">{staff?.role}</p>
             </div>
+          )}
+          {/* Desktop Notification Bell */}
+          {!collapsed && (
+            <NotificationBell onViewOrders={navigateToOrders} />
           )}
         </div>
 
@@ -136,6 +162,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <Footer />
       </main>
+
+      {/* Notification Toasts — render at layout level for all pages */}
+      <NotificationToast onViewOrders={navigateToOrders} />
     </div>
   );
 }

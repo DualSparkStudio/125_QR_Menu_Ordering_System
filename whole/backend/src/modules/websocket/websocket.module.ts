@@ -6,5 +6,6 @@ import { RedisModule } from '../../common/redis/redis.module';
 @Module({
   imports: [PrismaModule, RedisModule],
   providers: [WebSocketGateway],
+  exports: [WebSocketGateway],
 })
 export class WebSocketModule {}
