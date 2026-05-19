@@ -283,27 +283,29 @@ export default function CartPage() {
         )}
 
         {/* Coupon */}
-        <Section title="Coupon Code">
-          <div className="flex gap-2">
-            <input 
-              value={couponCode} 
-              onChange={handleCouponChange}
-              placeholder="e.g. WELCOME20" 
-              className="input-field flex-1 font-mono tracking-widest" 
-              disabled={validatingCoupon}
-            />
-            <button onClick={applyCoupon} disabled={validatingCoupon || !couponCode.trim()} className="btn-secondary px-5 font-bold disabled:opacity-50">
-              {validatingCoupon ? '...' : 'Apply'}
-            </button>
-          </div>
-          {couponError && <p className="text-red-500 text-xs mt-2">{couponError}</p>}
-          {couponApplied && (
-            <div className="flex items-center gap-2 mt-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-              <span className="text-green-500">🎉</span>
-              <p className="text-green-600 text-xs font-semibold">Saving {currency} {couponDiscount.toFixed(0)}!</p>
+        {!existingOrders.some(o => o.couponCode || (o.discountAmount && o.discountAmount > 0)) && (
+          <Section title="Coupon Code">
+            <div className="flex gap-2">
+              <input 
+                value={couponCode} 
+                onChange={handleCouponChange}
+                placeholder="e.g. WELCOME20" 
+                className="input-field flex-1 font-mono tracking-widest" 
+                disabled={validatingCoupon}
+              />
+              <button onClick={applyCoupon} disabled={validatingCoupon || !couponCode.trim()} className="btn-secondary px-5 font-bold disabled:opacity-50">
+                {validatingCoupon ? '...' : 'Apply'}
+              </button>
             </div>
-          )}
-        </Section>
+            {couponError && <p className="text-red-500 text-xs mt-2">{couponError}</p>}
+            {couponApplied && (
+              <div className="flex items-center gap-2 mt-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                <span className="text-green-500">🎉</span>
+                <p className="text-green-600 text-xs font-semibold">Saving {currency} {couponDiscount.toFixed(0)}!</p>
+              </div>
+            )}
+          </Section>
+        )}
 
         {/* Bill */}
         <div className="card p-5 shadow-sm shadow-orange-50">
