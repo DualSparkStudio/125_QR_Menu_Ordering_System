@@ -1,5 +1,5 @@
 [build]
-  command = "cd whole/shared && npm install && cd ../guest-app && npm install && npx prisma generate --schema=./prisma/schema.prisma && npm run build && cd ../../netlify/functions && npm install && npx prisma generate --schema=./prisma/schema.prisma"
+  command = "cd whole/shared && npm install && cd ../guest-app && npm install && npx prisma generate --schema=./prisma/schema.prisma && npm run build && cd ../../netlify/functions && npm install && npx prisma generate --schema=./prisma/schema.prisma && rm -rf node_modules/prisma node_modules/@prisma/engines netlify/functions/node_modules/prisma netlify/functions/node_modules/@prisma/engines && find . -name \"libquery_engine-*\" -not -name \"*rhel-openssl*\" -delete"
   publish = "whole/guest-app/.next"
 
 [functions]
