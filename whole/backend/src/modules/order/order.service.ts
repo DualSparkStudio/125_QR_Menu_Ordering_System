@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { RedisService } from '../../common/redis/redis.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { NotificationService } from '../notification/notification.service';
+import { WebSocketGateway } from '../websocket/websocket.gateway';
 import { generateOrderNumber, calculateOrderTotals, getItemStatusFromOrderStatus } from '../../utils/order.utils';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class OrderService {
     private prisma: PrismaService,
     private redis: RedisService,
     private notificationService: NotificationService,
+    private wsGateway: WebSocketGateway,
   ) {}
 
   async createOrder(restaurantId: string, tableId: string, dto: CreateOrderDto) {
@@ -113,8 +115,12 @@ export class OrderService {
     // Cache order
     await this.redis.set(`order:${order.id}`, JSON.stringify(order), 86400);
 
-    // Publish event
+    // Publish event via Redis (for other services)
     await this.redis.publish(`restaurant:${restaurantId}`, JSON.stringify({ event: 'order_placed', data: order }));
+
+    // Broadcast directly via WebSocket to connected admin clients
+    this.wsGateway.broadcast(restaurantId, 'order_placed', order);
+    this.logger.log(`[Notification] order_placed broadcasted for order ${order.orderNumber}`);
 
     // Send notification immediately (non-blocking)
     this.notificationService.sendOrderConfirmation(order.id).catch(err => 
@@ -190,8 +196,12 @@ export class OrderService {
       include: { items: { include: { menuItem: true } }, table: true },
     });
 
-    // Publish event
+    // Publish event via Redis
     await this.redis.publish(`restaurant:${order.restaurantId}`, JSON.stringify({ event: 'order_updated', data: updatedOrder }));
+
+    // Broadcast directly via WebSocket to connected admin clients
+    this.wsGateway.broadcast(order.restaurantId, 'order_updated', updatedOrder);
+    this.logger.log(`[Notification] order_updated broadcasted for order ${updatedOrder.orderNumber}`);
 
     // Send notification for items added to existing order
     this.notificationService.sendOrderUpdate(updatedOrder.id).catch(err => 
