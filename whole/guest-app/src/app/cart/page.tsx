@@ -41,9 +41,14 @@ export default function CartPage() {
   const subtotal = getTotal();
   const cgstPct = restaurant?.cgstPercentage ?? 0;
   const sgstPct = restaurant?.sgstPercentage ?? 0;
-  const { taxAmount: tax, serviceCharge, cgstAmount, sgstAmount, totalAmount: total } = restaurant
-    ? calculateOrderTotals(subtotal, restaurant.taxPercentage, restaurant.serviceChargePercentage, couponDiscount, cgstPct, sgstPct)
-    : { taxAmount: 0, serviceCharge: 0, cgstAmount: 0, sgstAmount: 0, totalAmount: subtotal };
+  const { taxAmount: tax, serviceCharge, cgstAmount, sgstAmount, totalAmount: total } = calculateOrderTotals(
+    subtotal,
+    restaurant?.taxPercentage ?? 0,
+    restaurant?.serviceChargePercentage ?? 0,
+    couponDiscount,
+    cgstPct,
+    sgstPct
+  );
   const currency = '₹';
 
   // Calculate existing order total
@@ -329,10 +334,16 @@ export default function CartPage() {
               </div>
             )}
             {couponDiscount > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-green-600 font-semibold">Discount {couponCode && `(${couponCode})`}</span>
-                <span className="text-green-600 font-semibold">−{currency}{couponDiscount.toFixed(2)}</span>
-              </div>
+              <>
+                <div className="flex justify-between text-sm border-t border-orange-100 pt-2">
+                  <span className="text-stone-500 font-medium">Subtotal before discount</span>
+                  <span className="text-stone-900 font-medium">{currency}{(total + couponDiscount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-600 font-semibold">Discount {couponCode && `(${couponCode})`}</span>
+                  <span className="text-green-600 font-semibold">−{currency}{couponDiscount.toFixed(2)}</span>
+                </div>
+              </>
             )}
             <div className="border-t-2 border-orange-200 pt-3 flex justify-between items-center">
               <span className="font-bold text-stone-900 text-lg">New Order Total</span>
