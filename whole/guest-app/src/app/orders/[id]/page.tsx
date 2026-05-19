@@ -145,6 +145,11 @@ function OrderContent() {
   const isCancelled = order.status === 'cancelled';
   const isCompleted = order.status === 'completed';
   const isPaidOrder = order.paymentStatus === 'completed';
+  const cgstPct = order.restaurant?.cgstPercentage ?? 0;
+  const sgstPct = order.restaurant?.sgstPercentage ?? 0;
+  const orderSubtotal = order.subtotal || 0;
+  const displayCgst = (order.cgstAmount || 0) > 0 ? order.cgstAmount : (orderSubtotal * cgstPct) / 100;
+  const displaySgst = (order.sgstAmount || 0) > 0 ? order.sgstAmount : (orderSubtotal * sgstPct) / 100;
 
   return (
     <div className="min-h-screen bg-[#fff8f3]">
@@ -284,6 +289,18 @@ function OrderContent() {
               <div className="flex justify-between text-sm">
                 <span className="text-stone-500">Service Charge ({order.restaurant?.serviceChargePercentage || 0}%)</span>
                 <span className="text-stone-900 font-medium">₹{(order.serviceCharge || 0).toFixed(2)}</span>
+              </div>
+            )}
+            {(displayCgst > 0 || cgstPct > 0) && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">CGST ({cgstPct}%)</span>
+                <span className="text-stone-900 font-medium">₹{displayCgst.toFixed(2)}</span>
+              </div>
+            )}
+            {(displaySgst > 0 || sgstPct > 0) && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">SGST ({sgstPct}%)</span>
+                <span className="text-stone-900 font-medium">₹{displaySgst.toFixed(2)}</span>
               </div>
             )}
             {(order.discountAmount || 0) > 0 && (

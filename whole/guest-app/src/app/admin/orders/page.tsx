@@ -25,6 +25,7 @@ import {
   notifyNewOrder,
   notifyOrderUpdate,
 } from '../../../../../shared/notificationUtils';
+import { openThermalBill, getBillImageFromStorage } from '@/lib/thermalBill';
 
 export default function OrdersPage() {
   const { staff, token, isAuthenticated, hydrated } = useAuthStore();
@@ -113,31 +114,22 @@ export default function OrdersPage() {
   };
 
   const printBill = (order: any) => {
-    const r = order.restaurant;
-    if (!r) { alert('Unable to load restaurant details. Please refresh.'); return; }
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    const billImage = staff?.restaurantId ? localStorage.getItem(`billImage_${staff.restaurantId}`) : null;
-    const billImageLabel = staff?.restaurantId ? (localStorage.getItem(`billImageLabel_${staff.restaurantId}`) || 'Scan to Pay') : 'Scan to Pay';
-    const itemsHTML = order.items?.map((item: any) =>
-      `<div class="item"><div class="item-left"><div class="item-name">${item.menuItem?.name || 'Item'}</div><div class="item-qty">x${item.quantity} @ ₹${item.price.toFixed(2)}</div></div><span class="item-price">₹${(item.price * item.quantity).toFixed(2)}</span></div>`
-    ).join('') || '';
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bill</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Courier New',monospace;width:80mm;max-width:80mm;margin:0 auto;padding:4mm;font-size:11px;line-height:1.4}.center{text-align:center}.bold{font-weight:bold}.header{text-align:center;margin-bottom:6px}.header h1{font-size:14px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}.header p{font-size:10px;margin:1px 0}.dashed{border-top:1px dashed #000;margin:5px 0}.order-meta{font-size:10px;margin:4px 0;text-align:center}.order-meta p{margin:2px 0}.items{margin:4px 0}.item{display:flex;justify-content:space-between;align-items:flex-start;margin:3px 0;font-size:11px}.item-left{flex:1;padding-right:4px}.item-name{font-weight:bold}.item-qty{color:#444;font-size:10px}.item-price{white-space:nowrap;font-weight:bold}.summary{margin:4px 0}.summary-row{display:flex;justify-content:space-between;margin:2px 0;font-size:11px}.summary-row.total{font-weight:bold;font-size:13px;margin-top:4px;padding-top:3px;border-top:1px solid #000}.payment-badge{text-align:center;border:2px solid #000;padding:4px;margin:6px 0;font-size:12px;font-weight:bold;letter-spacing:1px}.footer{text-align:center;margin-top:6px;font-size:10px}.footer p{margin:2px 0}@media print{html,body{width:80mm}@page{size:80mm auto;margin:0}}</style></head><body>
-    <div class="header"><h1>${r.name || 'Restaurant'}</h1>${r.address ? `<p>${r.address}</p>` : ''}${r.phone ? `<p>Tel: ${r.phone}</p>` : ''}</div>
-    <div class="dashed"></div>
-    <div class="order-meta"><p class="bold">ORDER #${order.orderNumber?.slice(-8)}</p><p>Table ${order.table?.tableNumber} | ${order.table?.section || 'Main'}</p><p>${new Date(order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
-    <div class="dashed"></div>
-    <div class="items"><div class="item bold" style="font-size:10px;color:#555;margin-bottom:3px;"><span class="item-left">ITEM</span><span>AMT</span></div>${itemsHTML}</div>
-    <div class="dashed"></div>
-    <div class="summary"><div class="summary-row"><span>Subtotal</span><span>₹${(order.subtotal || 0).toFixed(2)}</span></div>${(order.taxAmount || 0) > 0 ? `<div class="summary-row"><span>Tax (${r.taxPercentage || 0}%)</span><span>₹${(order.taxAmount || 0).toFixed(2)}</span></div>` : ''}${(order.serviceCharge || 0) > 0 ? `<div class="summary-row"><span>Service (${r.serviceChargePercentage || 0}%)</span><span>₹${(order.serviceCharge || 0).toFixed(2)}</span></div>` : ''}${(order.discountAmount || 0) > 0 ? `<div class="summary-row"><span>Discount</span><span>-₹${(order.discountAmount || 0).toFixed(2)}</span></div>` : ''}<div class="summary-row total"><span>TOTAL</span><span>₹${(order.totalAmount || 0).toFixed(2)}</span></div></div>
-    <div class="payment-badge">${order.paymentStatus === 'completed' ? '*** PAID ***' : 'UNPAID — PAY AT COUNTER'}</div>
-    <div class="dashed"></div>
-    <div class="footer"><p>Thank you for dining with us!</p><p>Please visit again</p>${billImage ? `<div style="margin-top:8px;"><div class="dashed"></div><p style="font-size:10px;font-weight:bold;margin-bottom:4px;">${billImageLabel}</p><img src="${billImage}" style="width:48mm;height:48mm;object-fit:contain;display:block;margin:0 auto;" /></div>` : ''}</div>
-    <script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
-    </body></html>`;
-    printWindow.document.write(html);
-    printWindow.document.close();
+    if (!order.restaurant) {
+      alert('Unable to load restaurant details. Please refresh.');
+      return;
+    }
+    const { image, label } = staff?.restaurantId
+      ? getBillImageFromStorage(staff.restaurantId)
+      : { image: null, label: 'Scan to Pay' };
+    openThermalBill({
+      order,
+      billImage: image,
+      billImageLabel: label,
+      logoUrl: order.restaurant?.logo || null,
+      autoPrint: false,
+    });
   };
+
 
   const activeCount = orders.filter((o) => ['pending', 'confirmed', 'preparing', 'ready'].includes(o.status)).length;
 

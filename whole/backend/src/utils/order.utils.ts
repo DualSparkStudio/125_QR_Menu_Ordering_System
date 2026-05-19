@@ -16,15 +16,21 @@ export function calculateOrderTotals(
   subtotal: number,
   taxPercentage: number = 0,
   serviceChargePercentage: number = 0,
-  discountAmount: number = 0
-): { taxAmount: number; serviceCharge: number; totalAmount: number } {
+  discountAmount: number = 0,
+  cgstPercentage: number = 0,
+  sgstPercentage: number = 0
+): { taxAmount: number; serviceCharge: number; cgstAmount: number; sgstAmount: number; totalAmount: number } {
   const taxAmount = (subtotal * taxPercentage) / 100;
   const serviceCharge = (subtotal * serviceChargePercentage) / 100;
-  const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
+  const cgstAmount = (subtotal * cgstPercentage) / 100;
+  const sgstAmount = (subtotal * sgstPercentage) / 100;
+  const totalAmount = subtotal + taxAmount + serviceCharge + cgstAmount + sgstAmount - discountAmount;
 
   return {
     taxAmount: Math.round(taxAmount * 100) / 100,
     serviceCharge: Math.round(serviceCharge * 100) / 100,
+    cgstAmount: Math.round(cgstAmount * 100) / 100,
+    sgstAmount: Math.round(sgstAmount * 100) / 100,
     totalAmount: Math.round(totalAmount * 100) / 100,
   };
 }

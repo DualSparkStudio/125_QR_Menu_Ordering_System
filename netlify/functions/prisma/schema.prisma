@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ============ RESTAURANT (Multi-tenant root) ============
@@ -28,6 +27,8 @@ model Restaurant {
   currency                String   @default("INR")
   taxPercentage           Float    @default(5)
   serviceChargePercentage Float    @default(0)
+  cgstPercentage          Float    @default(0)
+  sgstPercentage          Float    @default(0)
   isOpen                  Boolean  @default(true)
   openingHours            String?  // JSON: { mon: { open: "09:00", close: "22:00" }, ... }
 
@@ -198,6 +199,8 @@ model Order {
   subtotal       Float
   taxAmount      Float
   serviceCharge  Float
+  cgstAmount     Float    @default(0)
+  sgstAmount     Float    @default(0)
   discountAmount Float    @default(0)
   totalAmount    Float
 

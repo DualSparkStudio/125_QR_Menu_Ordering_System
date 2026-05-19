@@ -42,7 +42,7 @@ export class TableService {
   async findByQrCode(qrCode: string) {
     const table = await this.prisma.table.findUnique({
       where: { qrCode },
-      include: { restaurant: { select: { id: true, name: true, slug: true, logo: true, currency: true, taxPercentage: true, serviceChargePercentage: true, isOpen: true } } },
+      include: { restaurant: { select: { id: true, name: true, slug: true, logo: true, currency: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true, isOpen: true } } },
     });
     if (!table) throw new NotFoundException('Table not found');
     return table;
@@ -52,7 +52,7 @@ export class TableService {
     // Find the first active restaurant's table with this number
     const table = await this.prisma.table.findFirst({
       where: { tableNumber, deletedAt: null, isActive: true },
-      include: { restaurant: { select: { id: true, name: true, slug: true, logo: true, currency: true, taxPercentage: true, serviceChargePercentage: true, isOpen: true } } },
+      include: { restaurant: { select: { id: true, name: true, slug: true, logo: true, currency: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true, isOpen: true } } },
     });
     if (!table) throw new NotFoundException('Table not found');
     return table;

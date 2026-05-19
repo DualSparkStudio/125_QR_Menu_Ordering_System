@@ -24,9 +24,11 @@ export declare function getOrderCardColor(order: any): string;
 export interface OrderTotals {
     taxAmount: number;
     serviceCharge: number;
+    cgstAmount: number;
+    sgstAmount: number;
     totalAmount: number;
 }
-export declare function calculateOrderTotals(subtotal: number, taxPercentage: number, serviceChargePercentage: number, discountAmount?: number): OrderTotals;
+export declare function calculateOrderTotals(subtotal: number, taxPercentage: number, serviceChargePercentage: number, discountAmount?: number, cgstPercentage?: number, sgstPercentage?: number): OrderTotals;
 /**
  * Generate unique order number
  */

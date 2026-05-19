@@ -28,17 +28,37 @@ export class CouponService {
   }
 
   async validate(restaurantId: string, code: string, orderTotal: number) {
+    if (orderTotal == null || Number.isNaN(Number(orderTotal))) {
+      throw new BadRequestException('orderAmount is required');
+    }
+    const amount = Number(orderTotal);
     const coupon = await this.prisma.coupon.findFirst({ where: { restaurantId, code, isActive: true } });
     if (!coupon) throw new NotFoundException('Invalid coupon code');
     if (coupon.expiresAt && coupon.expiresAt < new Date()) throw new BadRequestException('Coupon expired');
     if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new BadRequestException('Coupon usage limit reached');
-    if (orderTotal < coupon.minOrderValue) throw new BadRequestException(`Minimum order value is ${coupon.minOrderValue}`);
+    if (amount < coupon.minOrderValue) throw new BadRequestException(`Minimum order value is ${coupon.minOrderValue}`);
 
-    const discount = coupon.discountType === 'percentage'
-      ? Math.min(orderTotal * coupon.discountValue / 100, coupon.maxDiscount || Infinity)
+    const discountAmount = coupon.discountType === 'percentage'
+      ? Math.min(amount * coupon.discountValue / 100, coupon.maxDiscount || Infinity)
       : coupon.discountValue;
 
-    return { valid: true, discount, coupon };
+    const discount = Math.round(discountAmount * 100) / 100;
+
+    return {
+      valid: true,
+      discount,
+      discountAmount: discount,
+      coupon: {
+        id: coupon.id,
+        code: coupon.code,
+        description: coupon.description,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        discountAmount: discount,
+        minOrderValue: coupon.minOrderValue,
+        maxDiscount: coupon.maxDiscount,
+      },
+    };
   }
 
   async toggle(id: string) {

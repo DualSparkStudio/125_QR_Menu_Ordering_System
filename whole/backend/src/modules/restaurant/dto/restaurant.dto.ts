@@ -18,6 +18,8 @@ export class CreateRestaurantDto {
   @IsOptional() @IsString() currency?: string;
   @IsOptional() @IsNumber() @Min(0) @Max(100) taxPercentage?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) serviceChargePercentage?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) cgstPercentage?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) sgstPercentage?: number;
   @IsOptional() @IsString() openingHours?: string;
 }
 
@@ -32,6 +34,8 @@ export class UpdateRestaurantDto {
   @IsOptional() @IsString() banner?: string;
   @IsOptional() @IsNumber() @Min(0) @Max(100) taxPercentage?: number;
   @IsOptional() @IsNumber() @Min(0) @Max(100) serviceChargePercentage?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) cgstPercentage?: number;
+  @IsOptional() @IsNumber() @Min(0) @Max(100) sgstPercentage?: number;
   @IsOptional() @IsBoolean() isOpen?: boolean;
   @IsOptional() @IsString() openingHours?: string;
 }

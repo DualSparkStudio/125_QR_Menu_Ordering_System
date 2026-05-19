@@ -80,11 +80,13 @@ export class OrderService {
       }
     }
 
-    const { taxAmount, serviceCharge, totalAmount } = calculateOrderTotals(
+    const { taxAmount, serviceCharge, cgstAmount, sgstAmount, totalAmount } = calculateOrderTotals(
       subtotal,
       restaurant.taxPercentage,
       restaurant.serviceChargePercentage,
-      discountAmount
+      discountAmount,
+      restaurant.cgstPercentage ?? 0,
+      restaurant.sgstPercentage ?? 0
     );
     const orderNumber = generateOrderNumber();
 
@@ -93,7 +95,7 @@ export class OrderService {
         restaurantId, tableId, sessionId: dto.sessionId, orderNumber,
         guestName: dto.guestName, guestPhone: dto.guestPhone, guestCount: dto.guestCount || 1,
         specialInstructions: dto.specialInstructions,
-        subtotal, taxAmount, serviceCharge, discountAmount, totalAmount,
+        subtotal, taxAmount, serviceCharge, cgstAmount, sgstAmount, discountAmount, totalAmount,
         couponId, couponCode: dto.couponCode,
         items: { create: orderItems },
       },
@@ -166,11 +168,13 @@ export class OrderService {
 
     // Recalculate totals
     const newSubtotal = order.subtotal + additionalSubtotal;
-    const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, totalAmount: newTotalAmount } = calculateOrderTotals(
+    const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, cgstAmount: newCgstAmount, sgstAmount: newSgstAmount, totalAmount: newTotalAmount } = calculateOrderTotals(
       newSubtotal,
       order.restaurant.taxPercentage,
       order.restaurant.serviceChargePercentage,
-      order.discountAmount
+      order.discountAmount,
+      order.restaurant.cgstPercentage ?? 0,
+      order.restaurant.sgstPercentage ?? 0
     );
 
     const updatedOrder = await this.prisma.order.update({
@@ -179,6 +183,8 @@ export class OrderService {
         subtotal: newSubtotal,
         taxAmount: newTaxAmount,
         serviceCharge: newServiceCharge,
+        cgstAmount: newCgstAmount,
+        sgstAmount: newSgstAmount,
         totalAmount: newTotalAmount,
       },
       include: { items: { include: { menuItem: true } }, table: true },
@@ -210,7 +216,7 @@ export class OrderService {
         items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
         table: { select: { id: true, tableNumber: true, section: true } },
         payment: { select: { id: true, status: true, paymentMethod: true } },
-        restaurant: { select: { id: true, name: true, address: true, phone: true, email: true, taxPercentage: true, serviceChargePercentage: true } },
+        restaurant: { select: { id: true, name: true, address: true, phone: true, email: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -224,6 +230,7 @@ export class OrderService {
         table: true,
         payment: true,
         review: true,
+        restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } },
       },
     });
     if (!order) throw new NotFoundException('Order not found');

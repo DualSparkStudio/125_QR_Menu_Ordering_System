@@ -59,6 +59,8 @@ export function getOrderCardColor(order: any): string {
 export interface OrderTotals {
   taxAmount: number;
   serviceCharge: number;
+  cgstAmount: number;
+  sgstAmount: number;
   totalAmount: number;
 }
 
@@ -66,15 +68,21 @@ export function calculateOrderTotals(
   subtotal: number,
   taxPercentage: number,
   serviceChargePercentage: number,
-  discountAmount: number = 0
+  discountAmount: number = 0,
+  cgstPercentage: number = 0,
+  sgstPercentage: number = 0
 ): OrderTotals {
   const taxAmount = (subtotal * taxPercentage) / 100;
   const serviceCharge = (subtotal * serviceChargePercentage) / 100;
-  const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
+  const cgstAmount = (subtotal * cgstPercentage) / 100;
+  const sgstAmount = (subtotal * sgstPercentage) / 100;
+  const totalAmount = subtotal + taxAmount + serviceCharge + cgstAmount + sgstAmount - discountAmount;
   
   return {
     taxAmount: Number(taxAmount.toFixed(2)),
     serviceCharge: Number(serviceCharge.toFixed(2)),
+    cgstAmount: Number(cgstAmount.toFixed(2)),
+    sgstAmount: Number(sgstAmount.toFixed(2)),
     totalAmount: Number(totalAmount.toFixed(2)),
   };
 }

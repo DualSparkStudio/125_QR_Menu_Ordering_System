@@ -49,6 +49,8 @@ export interface Restaurant {
   currency: string;
   taxPercentage: number;
   serviceChargePercentage: number;
+  cgstPercentage: number;
+  sgstPercentage: number;
   isOpen: boolean;
   phone: string;
   address: string;
@@ -109,24 +111,14 @@ export const useRestaurantStore = create<RestaurantStore>((set, get) => ({
 
   fetchByQR: async (code: string) => {
     const now = Date.now();
-    const { lastFetch } = get();
-    
-    // Skip if fetched recently (within 5 seconds)
-    if (now - lastFetch < 5000) {
-      return;
-    }
 
     set({ loading: true, error: null });
     try {
       const BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
       // Detect if it's a UUID (QR code) or a plain table number
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
-      const url = isUUID ? `${BASE}/tables/qr/${code}` : `${BASE}/tables/number/${code}`;
-      const res = await fetch(url, {
-        // Enable browser caching
-        cache: 'force-cache',
-        next: { revalidate: 60 }
-      });
+      const url = isUUID ? `${BASE}/tables/qr/${code}?v=${now}` : `${BASE}/tables/number/${code}?v=${now}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Table not found');

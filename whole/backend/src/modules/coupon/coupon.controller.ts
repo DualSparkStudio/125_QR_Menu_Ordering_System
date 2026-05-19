@@ -19,8 +19,12 @@ export class CouponController {
   }
 
   @Post('validate')
-  validate(@Param('restaurantId') restaurantId: string, @Body() body: { code: string; orderTotal: number }) {
-    return this.service.validate(restaurantId, body.code, body.orderTotal);
+  validate(
+    @Param('restaurantId') restaurantId: string,
+    @Body() body: { code: string; orderTotal?: number; orderAmount?: number },
+  ) {
+    const orderTotal = body.orderTotal ?? body.orderAmount;
+    return this.service.validate(restaurantId, body.code, orderTotal);
   }
 
   @Put(':id/toggle')

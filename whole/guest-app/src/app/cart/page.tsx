@@ -39,9 +39,11 @@ export default function CartPage() {
   const [loadingExisting, setLoadingExisting] = useState(true);
 
   const subtotal = getTotal();
-  const { taxAmount: tax, serviceCharge, totalAmount: total } = restaurant 
-    ? calculateOrderTotals(subtotal, restaurant.taxPercentage, restaurant.serviceChargePercentage, couponDiscount)
-    : { taxAmount: 0, serviceCharge: 0, totalAmount: subtotal };
+  const cgstPct = restaurant?.cgstPercentage ?? 0;
+  const sgstPct = restaurant?.sgstPercentage ?? 0;
+  const { taxAmount: tax, serviceCharge, cgstAmount, sgstAmount, totalAmount: total } = restaurant
+    ? calculateOrderTotals(subtotal, restaurant.taxPercentage, restaurant.serviceChargePercentage, couponDiscount, cgstPct, sgstPct)
+    : { taxAmount: 0, serviceCharge: 0, cgstAmount: 0, sgstAmount: 0, totalAmount: subtotal };
   const currency = '₹';
 
   // Calculate existing order total
@@ -73,11 +75,28 @@ export default function CartPage() {
 
   const applyCoupon = async () => {
     if (!couponCode.trim() || !restaurantId || !tableId) return;
+    const currentSubtotal = getTotal();
+    if (currentSubtotal <= 0) {
+      setCouponError('Add items to your cart first.');
+      return;
+    }
     setValidatingCoupon(true);
     setCouponError('');
     try {
-      const result: any = await api.validateCoupon(restaurantId, couponCode, subtotal, tableId);
-      setCouponDiscount(result.discountAmount || 0); 
+      const result: any = await api.validateCoupon(restaurantId, couponCode, currentSubtotal, tableId);
+      const discount =
+        result?.discountAmount ??
+        result?.discount ??
+        result?.coupon?.discountAmount ??
+        0;
+      const amount = Number(discount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setCouponError('Coupon discount value is 0. Please check the coupon configuration.');
+        setCouponDiscount(0);
+        setCouponApplied(false);
+        return;
+      }
+      setCouponDiscount(amount);
       setCouponApplied(true);
     } catch (e: any) { 
       setCouponError(e.message); 
@@ -295,6 +314,18 @@ export default function CartPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-stone-500">Service Charge ({restaurant?.serviceChargePercentage || 0}%)</span>
                 <span className="text-stone-900 font-medium">{currency}{serviceCharge.toFixed(2)}</span>
+              </div>
+            )}
+            {(cgstAmount > 0 || cgstPct > 0) && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">CGST ({cgstPct}%)</span>
+                <span className="text-stone-900 font-medium">{currency}{cgstAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {(sgstAmount > 0 || sgstPct > 0) && (
+              <div className="flex justify-between text-sm">
+                <span className="text-stone-500">SGST ({sgstPct}%)</span>
+                <span className="text-stone-900 font-medium">{currency}{sgstAmount.toFixed(2)}</span>
               </div>
             )}
             {couponDiscount > 0 && (

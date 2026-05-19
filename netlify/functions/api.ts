@@ -235,7 +235,7 @@ export const handler: Handler = async (event) => {
     if (p && method === 'GET') {
       const table = await getPrisma().table.findFirst({
         where: { qrCode: p.code, isActive: true },
-        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true, isOpen: true, currency: true, taxPercentage: true, serviceChargePercentage: true } } },
+        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true, isOpen: true, currency: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } } },
       });
       if (!table) return json(404, { message: 'Table not found' });
       // Cache for 1 minute (table data changes less frequently)
@@ -247,7 +247,7 @@ export const handler: Handler = async (event) => {
     if (p && method === 'GET') {
       const table = await getPrisma().table.findFirst({
         where: { tableNumber: p.tableNumber, isActive: true },
-        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true, isOpen: true, currency: true, taxPercentage: true, serviceChargePercentage: true } } },
+        include: { restaurant: { select: { id: true, name: true, logo: true, address: true, phone: true, isOpen: true, currency: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } } },
       });
       if (!table) return json(404, { message: 'Table not found' });
       // Cache for 1 minute
@@ -488,11 +488,13 @@ export const handler: Handler = async (event) => {
 
         // Recalculate totals
         const newSubtotal = existingOrder.subtotal + additionalSubtotal;
-        const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, totalAmount: newTotalAmount } = calculateOrderTotals(
+        const { taxAmount: newTaxAmount, serviceCharge: newServiceCharge, cgstAmount: newCgstAmount, sgstAmount: newSgstAmount, totalAmount: newTotalAmount } = calculateOrderTotals(
           newSubtotal,
           restaurant.taxPercentage,
           restaurant.serviceChargePercentage,
-          existingOrder.discountAmount
+          existingOrder.discountAmount,
+          restaurant.cgstPercentage || 0,
+          restaurant.sgstPercentage || 0
         );
 
         // Update order with new totals
@@ -502,12 +504,14 @@ export const handler: Handler = async (event) => {
             subtotal: newSubtotal,
             taxAmount: newTaxAmount,
             serviceCharge: newServiceCharge,
+            cgstAmount: newCgstAmount,
+            sgstAmount: newSgstAmount,
             totalAmount: newTotalAmount,
           },
           include: {
             items: { include: { menuItem: true } },
             table: true,
-            restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true } },
+            restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } },
           },
         });
 
@@ -589,11 +593,13 @@ export const handler: Handler = async (event) => {
         }
       }
 
-      const { taxAmount, serviceCharge, totalAmount } = calculateOrderTotals(
+      const { taxAmount, serviceCharge, cgstAmount, sgstAmount, totalAmount } = calculateOrderTotals(
         subtotal,
         restaurant.taxPercentage,
         restaurant.serviceChargePercentage,
-        discountAmount
+        discountAmount,
+        restaurant.cgstPercentage || 0,
+        restaurant.sgstPercentage || 0
       );
 
       // Generate order number
@@ -613,6 +619,8 @@ export const handler: Handler = async (event) => {
           subtotal,
           taxAmount,
           serviceCharge,
+          cgstAmount,
+          sgstAmount,
           discountAmount,
           totalAmount,
           couponId,
@@ -624,7 +632,7 @@ export const handler: Handler = async (event) => {
         include: {
           items: { include: { menuItem: true } },
           table: true,
-          restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true } },
+          restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } },
         },
       });
 
@@ -672,7 +680,7 @@ export const handler: Handler = async (event) => {
         include: {
           items: { include: { menuItem: { select: { id: true, name: true, image: true } } } },
           table: { select: { id: true, tableNumber: true, section: true } },
-          restaurant: { select: { id: true, name: true, address: true, phone: true, email: true, taxPercentage: true, serviceChargePercentage: true } },
+          restaurant: { select: { id: true, name: true, address: true, phone: true, email: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -793,7 +801,7 @@ export const handler: Handler = async (event) => {
         include: { 
           items: { include: { menuItem: true } }, 
           table: true,
-          restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true } }
+          restaurant: { select: { id: true, name: true, taxPercentage: true, serviceChargePercentage: true, cgstPercentage: true, sgstPercentage: true } }
         },
       });
       if (!order) return json(404, { message: 'Not found' });
@@ -841,10 +849,11 @@ export const handler: Handler = async (event) => {
     p = matchPath('/restaurants/:restaurantId/coupons/validate', rawPath);
     if (p && method === 'POST') {
       console.log('[api] Coupon validation route matched:', { restaurantId: p.restaurantId, rawPath, method });
-      const { code, orderAmount } = body;
-      if (!code || orderAmount === undefined) {
+      const { code, orderAmount: rawOrderAmount } = body;
+      if (!code || rawOrderAmount === undefined) {
         return json(400, { message: 'Code and orderAmount required' });
       }
+      const orderAmount = Number(rawOrderAmount);
 
       const coupon = await getPrisma().coupon.findFirst({
         where: {
@@ -887,15 +896,19 @@ export const handler: Handler = async (event) => {
         discountAmount = coupon.discountValue;
       }
 
+      const roundedDiscount = Math.round(discountAmount * 100) / 100;
+
       return json(200, {
         valid: true,
+        discountAmount: roundedDiscount,
+        discount: roundedDiscount,
         coupon: {
           id: coupon.id,
           code: coupon.code,
           description: coupon.description,
           discountType: coupon.discountType,
           discountValue: coupon.discountValue,
-          discountAmount: discountAmount,
+          discountAmount: roundedDiscount,
           minOrderValue: coupon.minOrderValue,
           maxDiscount: coupon.maxDiscount,
         },

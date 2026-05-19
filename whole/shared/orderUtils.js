@@ -64,13 +64,17 @@ function getOrderCardColor(order) {
     }
     return constants_1.ORDER_CARD_COLORS.DEFAULT;
 }
-function calculateOrderTotals(subtotal, taxPercentage, serviceChargePercentage, discountAmount = 0) {
+function calculateOrderTotals(subtotal, taxPercentage, serviceChargePercentage, discountAmount = 0, cgstPercentage = 0, sgstPercentage = 0) {
     const taxAmount = (subtotal * taxPercentage) / 100;
     const serviceCharge = (subtotal * serviceChargePercentage) / 100;
-    const totalAmount = subtotal + taxAmount + serviceCharge - discountAmount;
+    const cgstAmount = (subtotal * cgstPercentage) / 100;
+    const sgstAmount = (subtotal * sgstPercentage) / 100;
+    const totalAmount = subtotal + taxAmount + serviceCharge + cgstAmount + sgstAmount - discountAmount;
     return {
         taxAmount: Number(taxAmount.toFixed(2)),
         serviceCharge: Number(serviceCharge.toFixed(2)),
+        cgstAmount: Number(cgstAmount.toFixed(2)),
+        sgstAmount: Number(sgstAmount.toFixed(2)),
         totalAmount: Number(totalAmount.toFixed(2)),
     };
 }
