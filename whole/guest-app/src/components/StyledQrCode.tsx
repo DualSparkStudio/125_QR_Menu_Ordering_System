@@ -39,7 +39,7 @@ export default function StyledQrCode({ data, size = 200, className }: StyledQrCo
   return (
     <div
       ref={containerRef}
-      className={`overflow-hidden rounded-full ${className ?? ''}`}
+      className={className ?? ''}
       style={{ width: size, height: size, maxWidth: '100%', aspectRatio: '1' }}
     />
   );

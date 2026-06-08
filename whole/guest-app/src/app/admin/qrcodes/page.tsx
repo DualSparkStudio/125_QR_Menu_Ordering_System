@@ -9,7 +9,7 @@ import {
   downloadTableTentCard,
   getTableTentCardDataUrl,
 } from '@/lib/qrTableTentCard';
-import { getTableQrUrl } from '@/lib/styledQr';
+import { getGuestAppBaseUrl, getTableQrUrl } from '@/lib/styledQr';
 
 const SECTION_COLORS: Record<string, string> = {
   main:        'bg-blue-50   text-blue-700   border-blue-200',
@@ -120,8 +120,28 @@ export default function QRCodesPage() {
     } finally { setDownloading(false); }
   };
 
+  const scanBaseUrl = getGuestAppBaseUrl();
+  const isLocalhostQr = scanBaseUrl.includes('localhost') || scanBaseUrl.includes('127.0.0.1');
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
+        {/* Scan URL notice */}
+        <div className={`mb-5 rounded-xl border px-4 py-3 text-xs ${isLocalhostQr ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-green-50 border-green-200 text-green-900'}`}>
+          <p className="font-bold mb-1">
+            {isLocalhostQr ? '⚠️ QR links use localhost — phones cannot open them' : '✓ QR scan address (phones use this)'}
+          </p>
+          <p className="font-mono break-all">{scanBaseUrl}/menu?table=…</p>
+          {isLocalhostQr ? (
+            <p className="mt-1.5 text-amber-800">
+              Set <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_GUEST_APP_URL</code> in{' '}
+              <code className="bg-amber-100 px-1 rounded">whole/guest-app/.env.local</code> to your PC&apos;s WiFi IP (e.g.{' '}
+              <code className="bg-amber-100 px-1 rounded">http://192.168.0.102:3000</code>), restart the server, then re-download cards.
+            </p>
+          ) : (
+            <p className="mt-1.5">Phone must be on the same WiFi. Re-download cards after changing this URL.</p>
+          )}
+        </div>
+
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>

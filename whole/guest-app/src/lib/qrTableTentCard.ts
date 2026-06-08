@@ -164,7 +164,7 @@ async function renderTableTentCanvas(
   ctx.fillText('☕', 32 * s, headerH + bodyH * 0.78);
 
   // Cloche QR — filled & dense
-  const clocheW = Math.round(280 * s);
+  const clocheW = Math.round(300 * s);
   const clocheCanvas = await renderClocheQrCanvas(input.qrUrl, clocheW);
   const clocheX = (w - clocheW) / 2;
   const clocheY = headerH + bodyH * 0.32;

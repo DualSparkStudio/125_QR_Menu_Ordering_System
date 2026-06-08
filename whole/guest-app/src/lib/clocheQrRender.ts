@@ -1,4 +1,4 @@
-import { drawClocheClip, drawClocheDecor } from './qrClocheShape';
+import { drawClocheDecorAroundQr } from './qrClocheShape';
 import { getTentQrDataUrl } from './styledQr';
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -11,47 +11,61 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
 /**
- * Renders a dense QR clipped to a filled cloche silhouette.
+ * Full scannable square QR + cloche frame drawn on top (shape unchanged, scan-safe).
  */
 export async function renderClocheQrCanvas(
   qrUrl: string,
   width: number,
 ): Promise<HTMLCanvasElement> {
-  const height = Math.round(width * 1.15);
+  const height = Math.round(width * 1.18);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
   const cx = width / 2;
-  const cy = height * 0.38;
-  const unit = width / 200;
+  const qrSize = width * 0.68;
+  const qrX = cx - qrSize / 2;
+  const qrY = height * 0.16;
+  const pad = width * 0.04;
 
-  // Soft plate glow
-  const glow = ctx.createRadialGradient(cx, cy + 52 * unit, 0, cx, cy + 52 * unit, 100 * unit);
-  glow.addColorStop(0, 'rgba(255,255,255,0.95)');
-  glow.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, width, height);
-
-  const qrDataUrl = await getTentQrDataUrl(qrUrl, Math.round(width * 1.05));
+  // High-res QR (2×) for sharp print + reliable scan
+  const qrDataUrl = await getTentQrDataUrl(qrUrl, Math.round(qrSize * 3));
   const qrImg = await loadImage(qrDataUrl);
 
-  const qrSize = width * 0.92;
-  const qrX = cx - qrSize / 2;
-  const qrY = cy - qrSize * 0.48;
-
-  // White fill inside cloche before QR
-  ctx.save();
-  drawClocheClip(ctx, cx, cy, unit);
+  // White card with quiet zone padding around QR
   ctx.fillStyle = '#ffffff';
+  roundRect(ctx, qrX - pad, qrY - pad, qrSize + pad * 2, qrSize + pad * 2, pad * 0.8);
   ctx.fill();
-  ctx.clip();
-  ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-  ctx.restore();
 
-  drawClocheDecor(ctx, cx, cy, unit);
+  ctx.shadowColor = 'rgba(0,0,0,0.12)';
+  ctx.shadowBlur = width * 0.02;
+  ctx.shadowOffsetY = width * 0.008;
+  ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Cloche frame around the card — strokes stay outside QR modules
+  drawClocheDecorAroundQr(ctx, qrX, qrY, qrSize, pad);
 
   return canvas;
 }

@@ -20,7 +20,10 @@ export function getTableQrUrl(qrCode: string): string {
   return `${base}/menu?table=${encodeURIComponent(qrCode)}`;
 }
 
-/** Dense square QR — fills cloche clip with minimal empty space */
+/**
+ * Scannable QR for print cards — square modules, square finders, quiet zone intact.
+ * Visual cloche shape is drawn as a frame around this (never clips the QR data).
+ */
 export function getTentQrOptions(data: string, size: number): Options {
   return {
     width: size,
@@ -28,19 +31,19 @@ export function getTentQrOptions(data: string, size: number): Options {
     type: 'canvas',
     shape: 'square',
     data,
-    margin: 2,
+    margin: 4,
     qrOptions: { errorCorrectionLevel: 'H' },
     dotsOptions: {
       color: QR_BLACK,
-      type: 'extra-rounded',
+      type: 'square',
     },
     cornersSquareOptions: {
       color: QR_BLACK,
-      type: 'extra-rounded',
+      type: 'square',
     },
     cornersDotOptions: {
       color: QR_BLACK,
-      type: 'dot',
+      type: 'square',
     },
     backgroundOptions: {
       color: QR_WHITE,

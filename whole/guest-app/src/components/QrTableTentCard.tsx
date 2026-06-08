@@ -23,7 +23,7 @@ export default function QrTableTentCard({
 }: QrTableTentCardProps) {
   const [logoError, setLogoError] = useState(false);
   const qrUrl = getTableQrUrl(qrCode);
-  const clocheW = compact ? 118 : 200;
+  const clocheW = compact ? 130 : 210;
 
   useEffect(() => { setLogoError(false); }, [logoUrl]);
 
@@ -105,11 +105,11 @@ export default function QrTableTentCard({
           </p>
         </div>
 
-        {/* Food accents */}
-        <span className={`absolute z-10 ${compact ? 'text-xs left-2 top-[42%]' : 'text-lg left-4 top-[44%]'}`}>🍕</span>
-        <span className={`absolute z-10 ${compact ? 'text-xs right-2 top-[38%]' : 'text-lg right-4 top-[40%]'}`}>🍔</span>
-        <span className={`absolute z-10 ${compact ? 'text-xs right-2 bottom-[28%]' : 'text-lg right-4 bottom-[30%]'}`}>😋</span>
-        <span className={`absolute z-10 ${compact ? 'text-xs left-2 bottom-[22%]' : 'text-lg left-4 bottom-[24%]'}`}>☕</span>
+        {/* Food accents — kept at corners, away from QR scan area */}
+        <span className={`absolute z-[5] pointer-events-none ${compact ? 'text-[10px] left-1.5 top-[28%]' : 'text-base left-3 top-[30%]'}`}>🍕</span>
+        <span className={`absolute z-[5] pointer-events-none ${compact ? 'text-[10px] right-1.5 top-[26%]' : 'text-base right-3 top-[28%]'}`}>🍔</span>
+        <span className={`absolute z-[5] pointer-events-none ${compact ? 'text-[10px] right-1 bottom-1' : 'text-sm right-2 bottom-1.5'}`}>😋</span>
+        <span className={`absolute z-[5] pointer-events-none ${compact ? 'text-[10px] left-1 bottom-1' : 'text-sm left-2 bottom-1.5'}`}>☕</span>
 
         {/* Filled cloche QR */}
         <div className={`relative z-10 flex-1 flex items-center justify-center ${compact ? 'pb-1' : 'pb-2'}`}>
