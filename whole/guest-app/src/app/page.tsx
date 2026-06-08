@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Footer from '@/components/Footer';
 
 function HomeContent() {
   const router = useRouter();
@@ -114,6 +115,10 @@ function HomeContent() {
               <p className="text-stone-400 text-xs font-semibold">{label}</p>
             </div>
           ))}
+        </div>
+        
+        <div className="mt-auto pt-8 w-full">
+          <Footer />
         </div>
       </div>
     </div>

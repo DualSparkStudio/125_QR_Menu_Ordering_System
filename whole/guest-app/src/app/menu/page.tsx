@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import Link from 'next/link';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 import { showNotification } from '../../../../shared/notificationUtils';
+import Footer from '@/components/Footer';
 
 const SPICE = ['', '🌶', '🌶🌶', '🌶🌶🌶'];
 
@@ -362,6 +363,7 @@ function MenuContent() {
             </div>
           ))
         )}
+        <Footer />
       </div>
 
       {/* Cart FAB */}
