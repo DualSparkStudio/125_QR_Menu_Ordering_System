@@ -14,7 +14,10 @@ function HomeContent() {
 
   useEffect(() => {
     const table = searchParams.get('table');
-    if (table) { setLoading(true); router.push(`/menu?table=${table}`); }
+    if (table) {
+      setLoading(true);
+      router.replace(`/menu?table=${encodeURIComponent(table)}`);
+    }
   }, [searchParams, router]);
 
   const handleSubmit = (e: React.FormEvent) => {

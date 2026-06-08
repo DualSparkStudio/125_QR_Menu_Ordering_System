@@ -34,7 +34,7 @@ export const handler: Handler = async (event) => {
     if (existing) return error('Table number already exists', 400);
 
     const qrCode = uuidv4();
-    const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}?table=${qrCode}`;
+    const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}/menu?table=${encodeURIComponent(qrCode)}`;
     const qrCodeUrl = await QRCode.toDataURL(qrUrl);
 
     const table = await prisma.table.create({

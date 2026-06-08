@@ -18,7 +18,7 @@ export class TableService {
     if (existing) throw new BadRequestException('Table number already exists');
 
     const qrCode = uuidv4();
-    const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}?table=${qrCode}`;
+    const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}/menu?table=${encodeURIComponent(qrCode)}`;
     const qrCodeUrl = await QRCode.toDataURL(qrUrl);
 
     return this.prisma.table.create({
@@ -76,7 +76,7 @@ export class TableService {
   async regenerateQR(id: string) {
     const table = await this.findById(id);
     const qrCode = uuidv4();
-    const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}?table=${qrCode}`;
+    const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}/menu?table=${encodeURIComponent(qrCode)}`;
     const qrCodeUrl = await QRCode.toDataURL(qrUrl);
     return this.prisma.table.update({ where: { id }, data: { qrCode, qrCodeUrl } });
   }

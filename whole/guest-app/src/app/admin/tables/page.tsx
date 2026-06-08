@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { adminApi } from '@/lib/api';
+import QrTableTentCard from '@/components/QrTableTentCard';
+import { downloadTableTentCard } from '@/lib/qrTableTentCard';
+import { getTableQrUrl } from '@/lib/styledQr';
 
 const STATUS_STYLE: Record<string, string> = {
   available:   'bg-green-50  text-green-700  border-green-200',
@@ -22,10 +25,15 @@ export default function TablesPage() {
   const [form, setForm] = useState({ tableNumber: '', section: 'main', capacity: '4' });
   const [saving, setSaving] = useState(false);
   const [qrModal, setQrModal] = useState<any>(null);
+  const [restaurant, setRestaurant] = useState<any>(null);
 
   const load = async () => {
     if (!staff?.restaurantId || !token) return;
-    const data: any = await adminApi.getTables(staff.restaurantId, token);
+    const [data, r]: any = await Promise.all([
+      adminApi.getTables(staff.restaurantId, token),
+      adminApi.getRestaurant(staff.restaurantId, token),
+    ]);
+    setRestaurant(r);
     setTables(data);
     setLoading(false);
   };
@@ -164,10 +172,34 @@ export default function TablesPage() {
           <div className="modal-overlay">
             <div className="modal max-w-sm p-6 text-center">
               <h2 className="font-black text-gray-900 text-lg mb-1">Table {qrModal.tableNumber}</h2>
-              <p className="text-gray-400 text-sm mb-5">Print and place on the table</p>
-              {qrModal.qrCodeUrl && <img src={qrModal.qrCodeUrl} alt="QR" className="w-52 h-52 mx-auto mb-4 rounded-2xl border border-gray-100" />}
-              <p className="text-xs text-gray-300 mb-5 break-all font-mono">{qrModal.qrCode}</p>
-              <button onClick={() => setQrModal(null)} className="btn-primary w-full">Close</button>
+              <p className="text-gray-400 text-sm mb-4">Download &amp; print for the table</p>
+              {qrModal.qrCode && (
+                <div className="max-w-[240px] mx-auto mb-4 shadow-lg rounded-xl overflow-hidden">
+                  <QrTableTentCard
+                    restaurantName={restaurant?.name || 'Restaurant'}
+                    logoUrl={restaurant?.logo}
+                    tableNumber={qrModal.tableNumber}
+                    section={qrModal.section}
+                    qrCode={qrModal.qrCode}
+                  />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadTableTentCard({
+                    restaurantName: restaurant?.name || 'Restaurant',
+                    logoUrl: restaurant?.logo,
+                    tableNumber: qrModal.tableNumber,
+                    section: qrModal.section,
+                    qrCode: qrModal.qrCode,
+                    qrUrl: getTableQrUrl(qrModal.qrCode),
+                  })}
+                  className="btn-secondary flex-1 text-sm"
+                >
+                  ⬇ Download
+                </button>
+                <button onClick={() => setQrModal(null)} className="btn-primary flex-1 text-sm">Close</button>
+              </div>
             </div>
           </div>
         )}

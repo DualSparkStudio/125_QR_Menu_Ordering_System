@@ -37,7 +37,7 @@ const handlerImpl: Handler = async (event) => {
       } else if (isRegenerateQR) {
         // PUT /restaurants/:restaurantId/tables/:id/regenerate-qr
         const qrCode = uuidv4();
-        const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}?table=${qrCode}`;
+        const qrUrl = `${process.env.GUEST_APP_URL || 'http://localhost:3000'}/menu?table=${encodeURIComponent(qrCode)}`;
         const qrCodeUrl = await QRCode.toDataURL(qrUrl);
 
         const updated = await prisma.table.update({

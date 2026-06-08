@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '@/lib/api';
+import { getApiUrl } from '../../../shared/config';
 
 export interface Category {
   id: string;
@@ -111,14 +112,25 @@ export const useRestaurantStore = create<RestaurantStore>((set, get) => ({
 
   fetchByQR: async (code: string) => {
     const now = Date.now();
+    const trimmed = code.trim();
+    if (!trimmed) {
+      set({ error: 'Table not found', loading: false });
+      return;
+    }
 
     set({ loading: true, error: null });
     try {
-      const BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
-      // Detect if it's a UUID (QR code) or a plain table number
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(code);
-      const url = isUUID ? `${BASE}/tables/qr/${code}?v=${now}` : `${BASE}/tables/number/${code}?v=${now}`;
-      const res = await fetch(url, { cache: 'no-store' });
+      const BASE = getApiUrl();
+      const encoded = encodeURIComponent(trimmed);
+
+      // Each printed QR encodes the table's unique qrCode — look that up first
+      let res = await fetch(`${BASE}/tables/qr/${encoded}?v=${now}`, { cache: 'no-store' });
+
+      // Fallback: guest typed a table number manually (e.g. "1" or "01")
+      if (!res.ok) {
+        res = await fetch(`${BASE}/tables/number/${encoded}?v=${now}`, { cache: 'no-store' });
+      }
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Table not found');
